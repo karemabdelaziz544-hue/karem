@@ -1,6 +1,7 @@
+import './index.css';  // 👈 ده السطر السحري اللي ناقصك!
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App'; // (بدون src لأنهم الآن جيران في نفس المجلد)
+import App from './App';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

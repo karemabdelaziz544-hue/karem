@@ -1,186 +1,189 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import Logo from '../components/Logo';
+import { useFamily } from '../contexts/FamilyContext';
+import { supabase } from '../lib/supabase';
+import { requestNotificationPermission } from '../lib/firebase';
+import Avatar from '../components/Avatar';
 import Button from '../components/Button';
-import { CheckCircle, Circle, Calendar, Trophy, ChevronLeft, ChevronRight, Target, TrendingUp } from 'lucide-react';
+import HabitTracker from '../components/dashboard/HabitTracker';
+import { History, LogOut, Bell, Lock, Clock, CheckCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
+import SmartDashboard from '../components/dashboard/SmartDashboard'; // 👈 استيراد الداشبورد الذكية
 
 const Dashboard: React.FC = () => {
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
+  const { currentProfile } = useFamily();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<any>(null);
-  const [plan, setPlan] = useState<any>(null);
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [activeDay, setActiveDay] = useState(1);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (user) fetchData();
-  }, [user]);
-
-  const fetchData = async () => {
-    try {
-      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user?.id).single();
-      setProfile(profileData);
-
-      const { data: plansData } = await supabase
-        .from('plans')
-        .select(`*, plan_tasks (*)`)
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (plansData && plansData.length > 0) {
-        setPlan(plansData[0]);
-        // ترتيب المهام لضمان ثباتها
-        const sortedTasks = plansData[0].plan_tasks.sort((a: any, b: any) => a.created_at.localeCompare(b.created_at));
-        setTasks(sortedTasks);
-        
-        // تحديد اليوم الحالي تلقائياً (أول يوم فيه مهام غير مكتملة)
-        const days = [...new Set(sortedTasks.map((t: any) => t.day_number))].sort((a: any, b: any) => Number(a) - Number(b));
-        
-        let foundActive = false;
-        for (let day of days) {
-          const dayTasks = sortedTasks.filter((t: any) => t.day_number === day);
-          const isDayComplete = dayTasks.every((t: any) => t.is_completed);
-          if (!isDayComplete) {
-            setActiveDay(day as number);
-            foundActive = true;
-            break;
-          }
-        }
-        // لو كله خلص، هات آخر يوم، ولو مفيش غير يوم واحد خليه هو النشط
-        if (!foundActive && days.length > 0) setActiveDay(days[days.length - 1] as number);
-        else if (days.length > 0) setActiveDay(days[0] as number);
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const toggleTask = async (taskId: string, currentStatus: boolean) => {
-    const newTasks = tasks.map(t => t.id === taskId ? { ...t, is_completed: !currentStatus } : t);
-    setTasks(newTasks);
-    await supabase.from('plan_tasks').update({ is_completed: !currentStatus }).eq('id', taskId);
-  };
-
-  // --- الحسابات ---
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter(t => t.is_completed).length;
-  const totalProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-  const currentDayTasks = tasks.filter(t => t.day_number === activeDay);
-  const dayTotal = currentDayTasks.length;
-  const dayCompleted = currentDayTasks.filter(t => t.is_completed).length;
-  const dayProgress = dayTotal > 0 ? Math.round((dayCompleted / dayTotal) * 100) : 0;
-  
-  const totalDays = tasks.length > 0 ? Math.max(...tasks.map(t => t.day_number)) : 1;
+  const [notificationStatus, setNotificationStatus] = useState('default');
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
+  const [checkingPayment, setCheckingPayment] = useState(true);
 
   const handleLogout = async () => {
     await signOut();
     navigate('/login');
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-cream text-forest font-bold">جاري تحميل بياناتك...</div>;
+  const isExpired = currentProfile?.subscription_status !== 'active' || 
+                    (currentProfile?.subscription_end_date && new Date(currentProfile.subscription_end_date) < new Date());
+  
+  const isDependent = !!currentProfile?.manager_id;
+
+  // 1. فحص هل يوجد طلب دفع معلق؟ (ذكاء النظام) 🧠
+  useEffect(() => {
+    const checkPendingPayments = async () => {
+      if (!currentProfile || !isExpired) {
+          setCheckingPayment(false);
+          return;
+      }
+
+      const { data } = await supabase
+        .from('payment_requests')
+        .select('id')
+        .eq('user_id', currentProfile.id)
+        .eq('status', 'pending')
+        .limit(1);
+
+      if (data && data.length > 0) {
+        setHasPendingRequest(true);
+      }
+      setCheckingPayment(false);
+    };
+
+    checkPendingPayments();
+  }, [currentProfile, isExpired]);
+
+  // التحقق من اكتمال البيانات
+  useEffect(() => {
+    if (currentProfile) {
+        const isProfileIncomplete = !currentProfile.birth_date || !currentProfile.height || !currentProfile.weight;
+        if (isProfileIncomplete && isDependent) {
+             toast('يرجى استكمال بياناتك الصحية للمتابعة', { icon: '📝' });
+             navigate('/dashboard/settings');
+        }
+    }
+  }, [currentProfile, navigate, isDependent]);
+
+  // إعدادات الإشعارات
+  useEffect(() => {
+    const syncNotificationToken = async () => {
+        if (!currentProfile) return;
+        if ('Notification' in window) setNotificationStatus(Notification.permission);
+        if (Notification.permission === 'granted' && !currentProfile.fcm_token) {
+            const token = await requestNotificationPermission();
+            if (token) await supabase.from('profiles').update({ fcm_token: token }).eq('id', currentProfile.id);
+        }
+    };
+    syncNotificationToken();
+  }, [currentProfile]);
+
+  const enableNotifications = async () => {
+    const token = await requestNotificationPermission();
+    if (token) {
+        setNotificationStatus('granted');
+        if (currentProfile && token !== currentProfile.fcm_token) {
+            await supabase.from('profiles').update({ fcm_token: token }).eq('id', currentProfile.id);
+            toast.success("تم التفعيل!");
+        }
+    }
+  };
+
+  if (!currentProfile || checkingPayment) return <div className="text-center py-20 font-bold text-gray-400">جاري تحميل بياناتك...</div>;
 
   return (
     <div className="min-h-screen bg-cream p-4 md:p-8 font-sans" dir="rtl">
-      <header className="flex justify-between items-center mb-6 bg-white p-4 rounded-3xl shadow-sm border border-sage/30">
+      {/* Header */}
+      <header className="flex justify-between items-center mb-8 bg-white p-4 rounded-3xl shadow-sm border border-sage/30">
         <div className="flex items-center gap-3">
-           <div className="bg-forest p-1.5 rounded-xl"><Logo className="h-8 w-8" /></div>
-           <span className="font-bold text-forest hidden md:block">لوحة المشترك</span>
+           <Avatar src={currentProfile.avatar_url} name={currentProfile.full_name} size="md" />
+           <div>
+             <span className="font-bold text-forest block text-sm md:text-base">أهلاً، {currentProfile.full_name?.split(' ')[0]} 👋</span>
+             
+             {/* حالة الاشتراك الذكية */}
+             {hasPendingRequest ? (
+                <span className="text-[10px] md:text-xs font-bold px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 flex items-center gap-1 w-fit">
+                    <Clock size={10}/> جاري المراجعة
+                </span>
+             ) : (
+                <span className={`text-[10px] md:text-xs font-bold px-2 py-0.5 rounded ${isExpired ? 'bg-gray-100 text-gray-500' : 'bg-green-100 text-green-600'} flex items-center gap-1 w-fit`}>
+                    {isExpired ? <Lock size={10}/> : <CheckCircle size={10}/>}
+                    {isExpired ? 'غير مشترك' : 'اشتراك نشط'}
+                </span>
+             )}
+           </div>
         </div>
-        <Button variant="outline" onClick={handleLogout} className="text-sm py-2 px-4 text-red-500 border-red-100 hover:bg-red-50">خروج</Button>
+        <div className="flex gap-2">
+            <Link to="/dashboard/history">
+                <Button variant="ghost" className="!px-3 text-gray-500 hover:text-forest">
+                    <History size={20} />
+                    <span className="hidden md:inline">السجل السابق</span>
+                </Button>
+            </Link>
+            <Button variant="outline" onClick={handleLogout} className="text-sm py-2 px-3 border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200">
+                <LogOut size={18} />
+            </Button>
+        </div>
       </header>
 
-      <div className="max-w-2xl mx-auto space-y-6">
-        
-        {/* كارت الترحيب + التقدم العام */}
-        <div className="bg-white p-6 rounded-3xl shadow-lg border border-sage/50 relative overflow-hidden">
-           <div className="absolute bottom-0 left-0 h-1.5 bg-gray-100 w-full">
-             <div className="h-full bg-green-500 transition-all duration-1000" style={{ width: `${totalProgress}%` }} />
-           </div>
-
-           <div className="flex justify-between items-center mt-2">
-             <div>
-               <h1 className="text-2xl font-extrabold text-forest mb-1">أهلاً، {profile?.full_name?.split(' ')[0] || 'بطل'} 👋</h1>
-               <p className="text-gray-500 text-xs md:text-sm">إجمالي إنجاز الخطة: <span className="text-green-600 font-bold">{totalProgress}%</span></p>
-             </div>
-             <div className="text-center bg-cream p-2 rounded-xl border border-orange/10">
-                <Trophy size={24} className={`mb-1 mx-auto ${totalProgress === 100 ? 'text-yellow-500 animate-bounce' : 'text-gray-300'}`} />
-                <span className="text-[10px] text-gray-400 font-bold block">الهدف</span>
-             </div>
-           </div>
-        </div>
-
-        {plan ? (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            
-            {/* شريط التنقل بين الأيام */}
-            <div className="flex items-center justify-between mb-6 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
-              <button disabled={activeDay === 1} onClick={() => setActiveDay(d => d - 1)} className="p-2 text-forest disabled:opacity-30 hover:bg-gray-50 rounded-full transition-colors"><ChevronRight /></button>
-              
-              <div className="text-center">
-                <div className="font-bold text-forest flex items-center justify-center gap-2 text-lg">
-                  <Calendar size={20} className="text-orange" /> 
-                  اليوم {activeDay} <span className="text-gray-400 text-sm font-normal">/ {totalDays}</span>
+      <div className="max-w-3xl mx-auto">
+        {!isExpired && notificationStatus === 'default' && (
+            <div className="mb-6 bg-forest/5 p-4 rounded-2xl border border-forest/10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="bg-white p-2 rounded-full shadow-sm text-forest"><Bell size={20} /></div>
+                    <div><h4 className="font-bold text-forest text-sm">تفعيل التنبيهات</h4></div>
                 </div>
+                <button onClick={enableNotifications} className="bg-forest text-white px-4 py-2 rounded-xl text-xs font-bold">تفعيل</button>
+            </div>
+        )}
+
+        {!isExpired && <HabitTracker userId={currentProfile.id} />}
+
+        {/* عرض المحتوى حسب الحالة */}
+        {isExpired ? (
+            <div className="bg-white rounded-3xl p-8 text-center shadow-lg border-2 border-orange/10 animate-in zoom-in-95 duration-300">
                 
-                {/* شريط تقدم اليوم */}
-                <div className="flex items-center gap-2 mt-1 justify-center">
-                   <span className="text-[10px] text-gray-400 font-bold">تقدم اليوم: {dayProgress}%</span>
-                   <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-orange transition-all duration-500" style={{ width: `${dayProgress}%` }} />
-                   </div>
-                </div>
-              </div>
-
-              <button disabled={activeDay === totalDays} onClick={() => setActiveDay(d => d + 1)} className="p-2 text-forest disabled:opacity-30 hover:bg-gray-50 rounded-full transition-colors"><ChevronLeft /></button>
+                {/* 1. حالة وجود طلب معلق (System Intelligence) */}
+                {hasPendingRequest ? (
+                    <>
+                        <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6 text-yellow-600 animate-pulse">
+                           <Clock size={40} />
+                        </div>
+                        <h2 className="text-2xl font-extrabold text-gray-800 mb-2">طلبك قيد المراجعة ⏳</h2>
+                        <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                            شكراً لإرسال إيصال الدفع. يقوم فريقنا بمراجعة طلبك حالياً وسيتم تفعيل اشتراكك فور التأكد من صحة البيانات.
+                        </p>
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-sm text-gray-400">
+                            عادة ما تستغرق المراجعة بضع ساعات. ستصلك رسالة فور التفعيل.
+                        </div>
+                    </>
+                ) : (
+                
+                /* 2. حالة منتهي عادي */
+                <>
+                    <div className="w-20 h-20 bg-orange/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                       {isDependent ? <Lock size={32} className="text-orange"/> : <span className="text-4xl">🚀</span>}
+                    </div>
+                    
+                    {isDependent ? (
+                        <>
+                            <h2 className="text-2xl font-extrabold text-gray-800 mb-2">في انتظار التفعيل ⏳</h2>
+                            <p className="text-gray-500 mb-8">يرجى من مسؤول العائلة تجديد الاشتراك لتفعيل حسابك.</p>
+                        </>
+                    ) : (
+                        <>
+                            <h2 className="text-2xl font-extrabold text-gray-800 mb-2">أهلاً بك في هيليكس! 👋</h2>
+                            <p className="text-gray-500 mb-8 max-w-md mx-auto">ابدأ رحلتك الصحية الآن باختيار باقة تناسبك.</p>
+                            <Button className="w-full md:w-auto px-10 py-4 text-lg justify-center shadow-xl shadow-orange/20 animate-pulse" onClick={() => navigate('/dashboard/subscriptions')}>
+                                اشترك الآن
+                            </Button>
+                        </>
+                    )}
+                </>
+                )}
             </div>
-
-            {/* قائمة مهام اليوم */}
-            <div className="space-y-3">
-              {currentDayTasks.length > 0 ? currentDayTasks.map((task) => (
-                <div 
-                  key={task.id}
-                  onClick={() => toggleTask(task.id, task.is_completed)}
-                  className={`group p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 flex items-center gap-4 select-none
-                    ${task.is_completed 
-                      ? 'bg-green-50/50 border-green-100 opacity-60' 
-                      : 'bg-white border-white hover:border-orange/30 hover:shadow-md shadow-sm'
-                    }
-                  `}
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300
-                    ${task.is_completed ? 'bg-green-500 text-white scale-110' : 'bg-gray-100 text-gray-300 group-hover:bg-orange/10 group-hover:text-orange'}
-                  `}>
-                    {task.is_completed ? <CheckCircle size={20} /> : <Circle size={20} />}
-                  </div>
-                  
-                  <span className={`text-lg font-medium flex-1 transition-all duration-300 ${task.is_completed ? 'text-gray-400 line-through' : 'text-forest'}`}>
-                    {task.content}
-                  </span>
-                </div>
-              )) : (
-                <div className="text-center py-12 flex flex-col items-center justify-center text-gray-400">
-                   <Target size={40} className="mb-2 opacity-20" />
-                   <p>لا توجد مهام لهذا اليوم (يوم راحة) 🎉</p>
-                </div>
-              )}
-            </div>
-
-          </div>
         ) : (
-          <div className="text-center py-16 bg-white rounded-3xl border-2 border-dashed border-gray-200 text-gray-400">
-            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <TrendingUp size={32} className="text-gray-300" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-500">جاري تجهيز خطتك...</h3>
-            <p className="text-sm text-gray-400 mt-2">سيقوم الطبيب بإضافة نظامك الغذائي قريباً.</p>
-          </div>
+            // 👇 هنا التغيير الجوهري: عرض الداشبورد الذكية
+            <SmartDashboard />
         )}
       </div>
     </div>

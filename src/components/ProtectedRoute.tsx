@@ -1,16 +1,22 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import Preloader from './Preloader';
 
-const ProtectedRoute = () => {
-  const { user } = useAuth();
+const ProtectedRoute: React.FC = () => {
+  const { user, loading } = useAuth();
 
-  // لو مفيش يوزر، ارجع لصفحة الدخول فوراً
+  // لو لسه بيحمل بيانات الدخول، اعرض شاشة تحميل
+  if (loading) {
+    return <Preloader />;
+  }
+
+  // لو مش مسجل دخول، وديه لصفحة الدخول
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // لو فيه يوزر، اعرض الصفحة المطلوبة (الداشبورد)
+  // ✅ لو مسجل دخول، دخله فوراً (وسيب الداشبورد هي اللي تعرضله اشترك الآن)
   return <Outlet />;
 };
 

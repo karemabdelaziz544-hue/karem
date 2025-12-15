@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* تنسيقات إضافية للخط */
+body {
+  font-family: 'Tajawal', sans-serif;
+  background-color: #fff7ed;
+  color: #022c22;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #fff7ed;
+}
+::-webkit-scrollbar-thumb {
+  background: #022c22;
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #f97316;
+}

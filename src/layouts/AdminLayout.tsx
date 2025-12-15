@@ -2,7 +2,21 @@ import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Logo from '../components/Logo';
-import { Users, FileText, LayoutDashboard, LogOut } from 'lucide-react';
+
+// 👇 هنا التصحيح: استيراد الأيقونات بشكل صريح بدون نقاط (...)
+import { 
+  Users, 
+  FileText, 
+  LayoutDashboard, 
+  LogOut, 
+  MessageSquare, 
+  CreditCard, 
+  Settings, 
+  Calendar, // لأيقونة إدارة الفعاليات
+  Ticket  ,
+  Tag // لأيقونة الحجوزات
+} from 'lucide-react';
+import NotificationsMenu from '../components/NotificationsMenu';
 
 const AdminLayout: React.FC = () => {
   const { signOut } = useAuth();
@@ -16,15 +30,23 @@ const AdminLayout: React.FC = () => {
   const navItems = [
     { name: 'نظرة عامة', icon: LayoutDashboard, path: '/admin' },
     { name: 'العملاء', icon: Users, path: '/admin/clients' },
+    { name: 'محادثات العملاء', icon: MessageSquare, path: '/admin/chat' },
     { name: 'أرشيف الأنظمة', icon: FileText, path: '/admin/plans' },
+    { name: 'طلبات الدفع', icon: CreditCard, path: '/admin/transactions' },
+    // الروابط الجديدة الخاصة بالفعاليات والحجوزات والإعدادات
+    { name: 'إدارة الفعاليات', icon: Calendar, path: '/admin/events' },
+    { name: 'حجوزات الفعاليات', icon: Ticket, path: '/admin/event-bookings' },
+    { name: 'المدونة والمقالات', icon: FileText, path: '/admin/blog' },
+    { name: 'أكواد الخصم', icon: Tag, path: '/admin/promocodes' },
+     { name: 'الإعدادات', icon: Settings, path: '/admin/settings' },
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50 font-sans" dir="rtl">
+    <div className="flex h-screen bg-gray-50 font-sans overflow-hidden" dir="rtl">
       
-      {/* Sidebar */}
+      {/* القائمة الجانبية */}
       <aside className="w-64 bg-white border-l border-gray-200 hidden md:flex flex-col flex-shrink-0 z-50">
-        <div className="p-6 border-b border-gray-100 flex items-center gap-3">
+        <div className="p-6 border-b border-gray-100 flex items-center gap-3 h-[73px]">
            <div className="bg-forest p-1.5 rounded-lg"><Logo className="h-8 w-8" /></div>
            <span className="font-bold text-forest text-lg">لوحة الإدارة</span>
         </div>
@@ -59,17 +81,31 @@ const AdminLayout: React.FC = () => {
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto relative bg-gray-50">
-        {/* Mobile Header */}
-        <div className="md:hidden bg-white p-4 shadow-sm flex justify-between items-center sticky top-0 z-40">
-           <Logo className="h-8 w-8" />
-           <button onClick={handleLogout}><LogOut size={20} className="text-gray-500"/></button>
-        </div>
+      {/* منطقة المحتوى */}
+      <main className="flex-1 flex flex-col min-w-0 bg-gray-50">
+        
+        <header className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm z-40 h-[73px]">
+            <div className="hidden md:block">
+                <h2 className="font-bold text-gray-700">مرحباً بك، دكتور 👋</h2>
+                <p className="text-xs text-gray-400">تابع نشاط عملائك اليوم</p>
+            </div>
 
-        {/* Page Content */}
-        <div className="p-4 md:p-8 max-w-7xl mx-auto">
-            <Outlet />
+            <div className="md:hidden flex items-center gap-2">
+                <div className="bg-forest p-1 rounded"><Logo className="h-6 w-6" /></div>
+                <span className="font-bold text-forest">هيليكس</span>
+            </div>
+
+            <div className="flex items-center gap-4">
+                <div className="bg-gray-50 rounded-xl border border-gray-100 p-0.5">
+                    <NotificationsMenu isAdmin={true} />
+                </div>
+            </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
+            <div className="max-w-7xl mx-auto">
+                <Outlet />
+            </div>
         </div>
       </main>
 

@@ -1,81 +1,74 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom'; // useNavigate مستوردة هنا
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-// import { User, Mail, Lock, Phone, ArrowRight } from 'lucide-react'; // لو محتاجهم فعلهم
 import Logo from '../components/Logo';
 import Input from '../components/Input';
 import Button from '../components/Button';
-import { supabase } from '../lib/supabase'; // تأكد أن المسار صحيح لمجلد lib
+import { supabase } from '../lib/supabase';
+import toast from 'react-hot-toast';
 
 const Signup: React.FC = () => {
-  // 1. تعريف الهوك في بداية المكون (وليس داخل الدالة)
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
+    gender: 'male', // 👈 القيمة الافتراضية
     password: '',
     confirmPassword: ''
   });
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // دالة عامة لتحديث المدخلات (text inputs)
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // 2. دالة التسجيل (واحدة فقط ونظيفة)
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
-      alert("كلمات المرور غير متطابقة");
+      toast.error("كلمات المرور غير متطابقة");
       return;
     }
     setLoading(true);
 
-    // 1. تسجيل المستخدم (Auth)
-    const { data, error } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-    });
-
-    if (error) {
-      alert("فشل إنشاء الحساب: " + error.message);
-      setLoading(false);
-      return;
-    }
-
-    // 2. بمجرد نجاح التسجيل، نزرع البيانات يدوياً في الجدول
-    if (data.user) {
-      console.log("تم إنشاء المستخدم، جاري حفظ البيانات...", data.user.id);
-      
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([ // استخدمنا insert بدلاً من upsert للتأكد
-          { 
-            id: data.user.id,
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
             full_name: formData.name,
             phone: formData.phone,
-            subscription_status: 'new',
-            role: 'client'
+            gender: formData.gender // 👈 إرسال النوع للتريجر
           }
-        ]);
+        }
+      });
 
-      if (profileError) {
-        console.error("كارثة! فشل حفظ البروفايل:", profileError);
-        alert("تم التسجيل لكن فشل حفظ البيانات: " + profileError.message);
-      } else {
-        console.log("تم حفظ البروفايل بنجاح!");
-        alert("تم التسجيل بنجاح! راجع بريدك للتفعيل.");
-        navigate('/login');
+      if (error) throw error;
+
+      if (data.user) {
+        // تحديث الهاتف لضمان حفظه (خطوة تأكيدية)
+        await supabase
+          .from('profiles')
+          .update({ phone: formData.phone })
+          .eq('id', data.user.id);
+
+        toast.success("تم إنشاء الحساب بنجاح! 🎉");
+        navigate('/dashboard'); 
       }
+    } catch (error: any) {
+      console.error(error);
+      toast.error("فشل إنشاء الحساب: " + (error.message || "خطأ غير معروف"));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+
   return (
     <div className="min-h-screen bg-cream flex items-center justify-center p-4 relative overflow-hidden">
-      {/* خلفية جمالية */}
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-forest/5 rounded-full blur-[100px]" />
          <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orange/10 rounded-full blur-[100px]" />
@@ -116,15 +109,37 @@ const Signup: React.FC = () => {
             required
           />
 
-          <Input 
-            label="رقم الهاتف (واتساب)" 
-            name="phone"
-            type="tel" 
-            placeholder="01xxxxxxxxx"
-            value={formData.phone}
-            onChange={handleChange}
-            required
-          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input 
+                label="رقم الهاتف" 
+                name="phone"
+                type="tel" 
+                placeholder="01xxxxxxxxx"
+                value={formData.phone}
+                onChange={handleChange}
+                required
+            />
+            
+            {/* 👇 قائمة اختيار النوع الجديدة */}
+            <div className="flex flex-col gap-2">
+                <label className="text-sm font-bold text-gray-700">النوع</label>
+                <div className="relative">
+                    <select
+                        name="gender"
+                        value={formData.gender}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-forest focus:ring-2 focus:ring-forest/20 outline-none transition-all bg-gray-50 appearance-none cursor-pointer"
+                    >
+                        <option value="male">ذكر 👨</option>
+                        <option value="female">أنثى 👩</option>
+                    </select>
+                    {/* سهم صغير للتجميل */}
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                </div>
+            </div>
+          </div>
           
           <div className="grid grid-cols-2 gap-4">
             <Input 
