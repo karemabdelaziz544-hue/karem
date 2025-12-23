@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Logo from '../components/Logo';
 
-// 👇 هنا التصحيح: استيراد الأيقونات بشكل صريح بدون نقاط (...)
+// 👇 استيراد الأيقونات (تمت إضافة TrendingUp للصفحة الجديدة)
 import { 
   Users, 
   FileText, 
@@ -12,9 +12,10 @@ import {
   MessageSquare, 
   CreditCard, 
   Settings, 
-  Calendar, // لأيقونة إدارة الفعاليات
-  Ticket  ,
-  Tag // لأيقونة الحجوزات
+  Calendar, 
+  Ticket,
+  Tag,
+  TrendingUp // 👈 الأيقونة الجديدة
 } from 'lucide-react';
 import NotificationsMenu from '../components/NotificationsMenu';
 
@@ -30,15 +31,15 @@ const AdminLayout: React.FC = () => {
   const navItems = [
     { name: 'نظرة عامة', icon: LayoutDashboard, path: '/admin' },
     { name: 'العملاء', icon: Users, path: '/admin/clients' },
+    { name: 'متابعة الالتزام', icon: TrendingUp, path: '/admin/performance' }, // 👈 الرابط الجديد (هام جداً)
     { name: 'محادثات العملاء', icon: MessageSquare, path: '/admin/chat' },
     { name: 'أرشيف الأنظمة', icon: FileText, path: '/admin/plans' },
     { name: 'طلبات الدفع', icon: CreditCard, path: '/admin/transactions' },
-    // الروابط الجديدة الخاصة بالفعاليات والحجوزات والإعدادات
     { name: 'إدارة الفعاليات', icon: Calendar, path: '/admin/events' },
     { name: 'حجوزات الفعاليات', icon: Ticket, path: '/admin/event-bookings' },
     { name: 'المدونة والمقالات', icon: FileText, path: '/admin/blog' },
     { name: 'أكواد الخصم', icon: Tag, path: '/admin/promocodes' },
-     { name: 'الإعدادات', icon: Settings, path: '/admin/settings' },
+    { name: 'الإعدادات', icon: Settings, path: '/admin/settings' },
   ];
 
   return (

@@ -4,22 +4,24 @@ import { supabase } from '../lib/supabase';
 import { CreditCard, History, CheckCircle, AlertTriangle, ArrowRight, RefreshCw, Settings, Clock, Loader2, Users, Star, Zap, Crown, Calendar, ShieldCheck } from 'lucide-react';
 import ModifySubscriptionModal from '../components/dashboard/ModifySubscriptionModal';
 import QuickRenewModal from '../components/dashboard/QuickRenewModal';
-import SubscribeFirstTime from '../components/dashboard/SubscribeFirstTime'; // 👈 استيراد المكون الجديد
+import SubscribeFirstTime from '../components/dashboard/SubscribeFirstTime';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
 
 const Subscriptions: React.FC = () => {
-  const { currentProfile, familyMembers } = useFamily();
+  const { currentProfile } = useFamily(); 
   const [activeTab, setActiveTab] = useState<'current' | 'history'>('current');
   const [history, setHistory] = useState<any[]>([]);
-  const [lastPlanDetails, setLastPlanDetails] = useState<any>(null); // لتخزين تفاصيل الباقة (Pro/Standard)
+  const [lastPlanDetails, setLastPlanDetails] = useState<any>(null);
   const [showModifyModal, setShowModifyModal] = useState(false);
   const [showQuickRenewModal, setShowQuickRenewModal] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  // 👇 الحالات الجديدة للتحكم في ظهور صفحة "أول مرة"
   const [hasHistory, setHasHistory] = useState(false); 
   const [pendingRequest, setPendingRequest] = useState<any | null>(null);
+
+  // المتغير لتخزين العدد
+  const [subAccountsCount, setSubAccountsCount] = useState(0);
 
   useEffect(() => {
     if (!currentProfile) return;
@@ -27,7 +29,7 @@ const Subscriptions: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       
-      // 1. جلب الطلبات المعلقة (عشان لو لسه باعت طلب ميعتبرش جديد)
+      // جلب الطلبات المعلقة
       const { data: pending } = await supabase
         .from('payment_requests')
         .select('*')
@@ -37,15 +39,15 @@ const Subscriptions: React.FC = () => {
 
       setPendingRequest(pending);
 
-      // 2. 👇 فحص هل يوجد أي سجل مدفوعات سابق؟ (لتحديد هل هو عميل جديد أم لا)
-      const { count } = await supabase
+      // فحص السجل السابق
+      const { count: historyCount } = await supabase
         .from('payment_requests')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', currentProfile.id);
       
-      setHasHistory(count ? count > 0 : false);
+      setHasHistory(historyCount ? historyCount > 0 : false);
 
-      // 3. جلب تفاصيل آخر باقة تم الموافقة عليها (عشان نعرف هو Pro ولا Standard للعرض)
+      // جلب تفاصيل الباقة
       const { data: lastApproved } = await supabase
         .from('payment_requests')
         .select('*')
@@ -57,7 +59,7 @@ const Subscriptions: React.FC = () => {
       
       setLastPlanDetails(lastApproved);
 
-      // 4. جلب السجل لو التاب نشط
+      // جلب السجل المالي
       if (activeTab === 'history') {
         const { data: hist } = await supabase
           .from('payment_requests')
@@ -67,6 +69,20 @@ const Subscriptions: React.FC = () => {
           .order('created_at', { ascending: false });
         setHistory(hist || []);
       }
+
+      // 2. 🔥 جلب العدد الحقيقي للحسابات الفرعية (تم التعديل هنا) 🔥
+      try {
+        const { count, error } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true }) 
+          .eq('manager_id', currentProfile.id); // ✅ التعديل: manager_id بدلاً من parent_id
+
+        if (!error && count !== null) {
+          setSubAccountsCount(count);
+        }
+      } catch (err) {
+        console.error("Error fetching sub-accounts:", err);
+      }
       
       setLoading(false);
     };
@@ -74,23 +90,18 @@ const Subscriptions: React.FC = () => {
     fetchData();
   }, [activeTab, currentProfile]);
 
-  // حسابات الحالة والأرقام
   const isActive = currentProfile?.subscription_status === 'active' && 
                    currentProfile.subscription_end_date && 
                    new Date(currentProfile.subscription_end_date) > new Date();
 
-  const subMembersCount = familyMembers.filter(m => m.manager_id === currentProfile?.id).length;
-  const planType = lastPlanDetails?.plan_type === 'pro' ? 'Pro' : 'Standard'; // الافتراضي Standard
+  const planType = lastPlanDetails?.plan_type === 'pro' ? 'Pro' : 'Standard';
 
   if (loading) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-forest"/></div>;
 
-  // 🌟 السيناريو 1: مستخدم جديد تماماً (ملوش هيستوري ومفيش طلب معلق)
-  // يظهر له الـ Wizard بتاع الاشتراك لأول مرة
   if (!hasHistory && !pendingRequest) {
       return <SubscribeFirstTime />;
   }
 
-  // 🌟 السيناريو 2: مستخدم حالي (أو جديد بس بعت طلب خلاص) -> عرض الصفحة العادية
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in pb-10">
       
@@ -113,18 +124,14 @@ const Subscriptions: React.FC = () => {
       {activeTab === 'current' ? (
         <div className="space-y-6">
            
-           {/* 💎 1. بطاقة تفاصيل الباقة الحالية */}
            <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 relative group">
-               {/* شريط علوي ملون */}
                <div className={`h-2 w-full ${isActive ? 'bg-gradient-to-r from-green-400 to-forest' : 'bg-gray-200'}`} />
                
                <div className="p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                    
-                   {/* تفاصيل الاسم والحالة */}
                    <div>
                        <div className="flex items-center gap-3 mb-2">
                            <h2 className="text-2xl font-black text-gray-800">باقة هيليكس العائلية</h2>
-                           {/* بادج نوع الباقة */}
                            <span className={`px-2.5 py-0.5 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1 ${planType === 'Pro' ? 'bg-orange/10 text-orange border border-orange/20' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>
                                {planType === 'Pro' ? <Zap size={12}/> : <Star size={12}/>}
                                {planType}
@@ -132,13 +139,11 @@ const Subscriptions: React.FC = () => {
                        </div>
                        
                        <div className="flex flex-wrap gap-3">
-                           {/* بادج الحالة */}
                            <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${isActive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
                                {isActive ? <CheckCircle size={14}/> : <AlertTriangle size={14}/>}
                                {isActive ? 'نشط وساري' : 'منتهي الصلاحية'}
                            </span>
                            
-                           {/* تاريخ الانتهاء */}
                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-50 text-gray-500 flex items-center gap-1.5">
                                <Calendar size={14}/>
                                ينتهي: {currentProfile?.subscription_end_date ? format(new Date(currentProfile.subscription_end_date), 'dd MMMM yyyy', { locale: ar }) : '--'}
@@ -146,7 +151,7 @@ const Subscriptions: React.FC = () => {
                        </div>
                    </div>
 
-                   {/* تفاصيل الحسابات (العدد) */}
+                   {/* تفاصيل الحسابات */}
                    <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 w-full md:w-auto">
                        <div className="flex flex-col items-center px-4 border-l border-gray-200">
                            <span className="text-xs text-gray-400 font-bold mb-1">حساب أساسي</span>
@@ -159,7 +164,7 @@ const Subscriptions: React.FC = () => {
                            <span className="text-xs text-gray-400 font-bold mb-1">حسابات فرعية</span>
                            <div className="flex items-center gap-1 font-black text-gray-700">
                                <Users size={18} className="text-blue-500 mb-1"/>
-                               <span className="text-xl">{subMembersCount}</span>
+                               <span className="text-xl">{subAccountsCount}</span>
                            </div>
                        </div>
                    </div>
@@ -167,7 +172,6 @@ const Subscriptions: React.FC = () => {
                </div>
            </div>
 
-           {/* 🛑 2. منطقة الإجراءات (التجديد والتعديل) */}
            {pendingRequest ? (
                <div className="bg-yellow-50 border border-yellow-200 rounded-3xl p-8 text-center animate-pulse">
                    <div className="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -181,58 +185,53 @@ const Subscriptions: React.FC = () => {
                </div>
            ) : (
                <div className="relative">
-                  
-                  {/* طبقة القفل (Overlay) - تظهر لو الاشتراك ساري */}
-                  {isActive && (
-                      <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-[2px] flex flex-col items-center justify-center rounded-3xl border-2 border-green-100/50 animate-in fade-in">
-                          <div className="bg-white p-4 rounded-full mb-3 text-green-500 shadow-lg shadow-green-100 animate-bounce">
-                              <ShieldCheck size={40} />
-                          </div>
-                          <h3 className="text-2xl font-black text-gray-800 mb-2">أمورك طيبة! 🌟</h3>
-                          <p className="text-gray-500 font-medium text-center max-w-xs">
-                              اشتراكك فعال حالياً. ستظهر خيارات التجديد والتعديل تلقائياً عند اقتراب موعد الانتهاء.
-                          </p>
-                      </div>
-                  )}
+                 {isActive && (
+                     <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-[2px] flex flex-col items-center justify-center rounded-3xl border-2 border-green-100/50 animate-in fade-in">
+                         <div className="bg-white p-4 rounded-full mb-3 text-green-500 shadow-lg shadow-green-100 animate-bounce">
+                             <ShieldCheck size={40} />
+                         </div>
+                         <h3 className="text-2xl font-black text-gray-800 mb-2">أمورك طيبة! 🌟</h3>
+                         <p className="text-gray-500 font-medium text-center max-w-xs">
+                             اشتراكك فعال حالياً. ستظهر خيارات التجديد والتعديل تلقائياً عند اقتراب موعد الانتهاء.
+                         </p>
+                     </div>
+                 )}
 
-                  {/* شبكة خيارات التجديد */}
-                  <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${isActive ? 'opacity-40 pointer-events-none grayscale-[0.5]' : ''}`}>
-                      
-                      {/* خيار 1: التجديد السريع */}
-                      <div 
-                        className="bg-white border border-gray-100 rounded-3xl p-6 hover:border-forest/50 hover:shadow-lg hover:shadow-forest/5 transition-all cursor-pointer group" 
-                        onClick={() => !isActive && setShowQuickRenewModal(true)}
-                      >
-                          <div className="bg-forest/5 w-14 h-14 rounded-2xl flex items-center justify-center text-forest mb-4 group-hover:bg-forest group-hover:text-white transition-colors">
-                              <RefreshCw size={28} />
-                          </div>
-                          <h3 className="text-xl font-bold text-gray-800 mb-2">تجديد نفس الباقة</h3>
-                          <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-                             ادفع وجدد فوراً بنفس عدد الأفراد الحاليين ({1 + subMembersCount} أفراد) ونفس المميزات.
-                          </p>
-                          <div className="flex items-center text-forest font-bold text-sm gap-2 group-hover:gap-4 transition-all">
+                 <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${isActive ? 'opacity-40 pointer-events-none grayscale-[0.5]' : ''}`}>
+                     
+                     <div 
+                       className="bg-white border border-gray-100 rounded-3xl p-6 hover:border-forest/50 hover:shadow-lg hover:shadow-forest/5 transition-all cursor-pointer group" 
+                       onClick={() => !isActive && setShowQuickRenewModal(true)}
+                     >
+                         <div className="bg-forest/5 w-14 h-14 rounded-2xl flex items-center justify-center text-forest mb-4 group-hover:bg-forest group-hover:text-white transition-colors">
+                             <RefreshCw size={28} />
+                         </div>
+                         <h3 className="text-xl font-bold text-gray-800 mb-2">تجديد نفس الباقة</h3>
+                         <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+                            ادفع وجدد فوراً بنفس عدد الأفراد الحاليين ({1 + subAccountsCount} أفراد) ونفس المميزات.
+                         </p>
+                         <div className="flex items-center text-forest font-bold text-sm gap-2 group-hover:gap-4 transition-all">
                              <span>تجديد سريع</span> <ArrowRight size={16}/>
-                          </div>
-                      </div>
+                         </div>
+                     </div>
 
-                      {/* خيار 2: تعديل الباقة */}
-                      <div 
-                        className="bg-gradient-to-br from-white to-orange/5 border border-gray-100 rounded-3xl p-6 hover:border-orange/50 hover:shadow-lg hover:shadow-orange/5 transition-all cursor-pointer group relative overflow-hidden" 
-                        onClick={() => !isActive && setShowModifyModal(true)}
-                      >
-                          <div className="absolute top-0 right-0 bg-orange text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-sm">تغيير الخطة</div>
-                          <div className="bg-orange/10 w-14 h-14 rounded-2xl flex items-center justify-center text-orange mb-4 group-hover:bg-orange group-hover:text-white transition-colors">
-                              <Settings size={28} />
-                          </div>
-                          <h3 className="text-xl font-bold text-gray-800 mb-2">تعديل / ترقية الباقة</h3>
-                          <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+                     <div 
+                       className="bg-gradient-to-br from-white to-orange/5 border border-gray-100 rounded-3xl p-6 hover:border-orange/50 hover:shadow-lg hover:shadow-orange/5 transition-all cursor-pointer group relative overflow-hidden" 
+                       onClick={() => !isActive && setShowModifyModal(true)}
+                     >
+                         <div className="absolute top-0 right-0 bg-orange text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-sm">تغيير الخطة</div>
+                         <div className="bg-orange/10 w-14 h-14 rounded-2xl flex items-center justify-center text-orange mb-4 group-hover:bg-orange group-hover:text-white transition-colors">
+                             <Settings size={28} />
+                         </div>
+                         <h3 className="text-xl font-bold text-gray-800 mb-2">تعديل / ترقية الباقة</h3>
+                         <p className="text-sm text-gray-500 mb-6 leading-relaxed">
                              هل تريد التحويل إلى Pro؟ أو تغيير عدد أفراد العائلة؟ اضغط هنا لتخصيص اشتراكك.
-                          </p>
-                          <div className="flex items-center text-orange font-bold text-sm gap-2 group-hover:gap-4 transition-all">
+                         </p>
+                         <div className="flex items-center text-orange font-bold text-sm gap-2 group-hover:gap-4 transition-all">
                              <span>تخصيص الاشتراك</span> <ArrowRight size={16}/>
-                          </div>
-                      </div>
-                  </div>
+                         </div>
+                     </div>
+                 </div>
                </div>
            )}
 

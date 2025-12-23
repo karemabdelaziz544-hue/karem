@@ -42,11 +42,14 @@ import AdminChat from './pages/admin/AdminChat';
 import TransactionReview from './pages/admin/TransactionReview';
 import EditPlan from './pages/admin/EditPlan';
 import ManageEvents from './pages/admin/ManageEvents';
-import EventBookings from './pages/admin/EventBookings'; // 👈 استيراد
-import EventDetailsPage from './pages/admin/EventDetailsPage'; // 
+// تأكد من وجود الملفات التالية أو قم بإنشائها، وإلا علّق هذه الأسطر مؤقتاً
+import EventBookings from './pages/admin/EventBookings'; 
+import EventDetailsPage from './pages/admin/EventDetailsPage'; 
 import ManageBlog from './pages/admin/ManageBlog';
 import WriteArticle from './pages/admin/WriteArticle';
 import ManagePromoCodes from './pages/admin/ManagePromoCodes';
+import ClientPerformance from './pages/admin/ClientPerformance'; // 👈 الصفحة الجديدة
+
 // Client Pages
 import History from './pages/History';
 import Subscriptions from './pages/Subscriptions';
@@ -139,7 +142,9 @@ const AppContent: React.FC = () => {
           <Route element={<AdminRoute />}>
              <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminOverview />} />
+                
                 <Route path="clients" element={<ClientsPage />} />
+                <Route path="performance" element={<ClientPerformance />} /> {/* 👈 الرابط الجديد */}
                 <Route path="clients/:id" element={<ClientDetails />} />
                 <Route path="plans" element={<PlansPage />} />
                 <Route path="plans/new/:userId" element={<CreatePlan />} />
@@ -147,11 +152,15 @@ const AppContent: React.FC = () => {
                 <Route path="chat" element={<AdminChat />} />
                 <Route path="transactions" element={<TransactionReview />} />
                 <Route path="events" element={<ManageEvents />} />
-                <Route path="events/:id" element={<EventDetailsPage />} /> {/* 👈 الرابط الجديد */}
+                
+                {/* تأكد من وجود هذه الصفحات أو احذفها مؤقتاً */}
+                <Route path="events/:id" element={<EventDetailsPage />} />
                 <Route path="event-bookings" element={<EventBookings />} />
+                
                 <Route path="blog" element={<ManageBlog />} />
+                <Route path="blog/new" element={<WriteArticle />} />
                 <Route path="promocodes" element={<ManagePromoCodes />} />
-<Route path="blog/new" element={<WriteArticle />} />
+                
                 <Route path="settings" element={<Settings />} />
              </Route>
           </Route>
