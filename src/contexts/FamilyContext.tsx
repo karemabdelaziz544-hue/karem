@@ -19,7 +19,14 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [loading, setLoading] = useState(true);
 
   const fetchFamily = async () => {
-    if (!user) return;
+    if (!user) {
+      setCurrentProfile(null);
+      setFamilyMembers([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     
     try {
       // 1. جلب العائلة كلها

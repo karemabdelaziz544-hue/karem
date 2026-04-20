@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import Logo from '../components/Logo';
 import Input from '../components/Input';
 import Button from '../components/Button';
+import { fetchUserRole, getDefaultRouteForRole } from '../lib/authRedirect';
 import { supabase } from '../lib/supabase';
-import toast from 'react-hot-toast';
+import { SignupSchema } from '../lib/validations';
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
@@ -14,13 +16,12 @@ const Signup: React.FC = () => {
     name: '',
     email: '',
     phone: '',
-    gender: 'male', // 👈 القيمة الافتراضية
+    gender: 'male',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
   });
   const [loading, setLoading] = useState(false);
 
-  // دالة عامة لتحديث المدخلات (text inputs)
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -28,40 +29,52 @@ const Signup: React.FC = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (formData.password !== formData.confirmPassword) {
-      toast.error("كلمات المرور غير متطابقة");
+    const validation = SignupSchema.safeParse(formData);
+    if (!validation.success) {
+      toast.error(validation.error.issues[0]?.message || 'بيانات التسجيل غير صحيحة');
       return;
     }
+
     setLoading(true);
 
     try {
       const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
+        email: validation.data.email,
+        password: validation.data.password,
         options: {
           data: {
-            full_name: formData.name,
-            phone: formData.phone,
-            gender: formData.gender // 👈 إرسال النوع للتريجر
-          }
-        }
+            full_name: validation.data.name,
+            phone: validation.data.phone,
+            gender: validation.data.gender,
+          },
+        },
       });
 
       if (error) throw error;
+      if (!data.user) throw new Error('تعذر إنشاء الحساب.');
 
-      if (data.user) {
-        // تحديث الهاتف لضمان حفظه (خطوة تأكيدية)
-        await supabase
-          .from('profiles')
-          .update({ phone: formData.phone })
-          .eq('id', data.user.id);
+      await supabase
+        .from('profiles')
+        .update({ phone: validation.data.phone })
+        .eq('id', data.user.id);
 
-        toast.success("تم إنشاء الحساب بنجاح! 🎉");
-        navigate('/dashboard'); 
+      if (!data.session) {
+        toast.success('تم إنشاء الحساب. راجع بريدك الإلكتروني لتفعيل الحساب.');
+        navigate('/login', { replace: true });
+        return;
       }
+
+      const role = await fetchUserRole(data.user.id);
+      if (!role) {
+        await supabase.auth.signOut();
+        throw new Error('تم إنشاء الحساب لكن لم يكتمل الملف الشخصي أو الصلاحية بعد.');
+      }
+
+      toast.success('تم إنشاء الحساب بنجاح!');
+      navigate(getDefaultRouteForRole(role), { replace: true });
     } catch (error: any) {
       console.error(error);
-      toast.error("فشل إنشاء الحساب: " + (error.message || "خطأ غير معروف"));
+      toast.error('فشل إنشاء الحساب: ' + (error.message || 'خطأ غير معروف'));
     } finally {
       setLoading(false);
     }
@@ -70,18 +83,18 @@ const Signup: React.FC = () => {
   return (
     <div className="min-h-screen bg-cream flex items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-forest/5 rounded-full blur-[100px]" />
-         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orange/10 rounded-full blur-[100px]" />
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-forest/5 rounded-full blur-[100px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orange/10 rounded-full blur-[100px]" />
       </div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         className="bg-white p-8 md:p-10 rounded-3xl shadow-2xl border border-sage/30 w-full max-w-lg relative z-10 text-right"
       >
         <div className="flex justify-center mb-6">
           <Link to="/">
-             <Logo className="h-14 w-14 shadow-lg rounded-2xl" />
+            <Logo className="h-14 w-14 shadow-lg rounded-2xl" />
           </Link>
         </div>
 
@@ -89,20 +102,20 @@ const Signup: React.FC = () => {
         <p className="text-gray-500 text-center mb-8 font-medium">ابدأ رحلة صحية جديدة ومخصصة لك</p>
 
         <form onSubmit={handleSignup} className="space-y-4">
-          <Input 
-            label="الاسم بالكامل" 
+          <Input
+            label="الاسم بالكامل"
             name="name"
-            type="text" 
+            type="text"
             placeholder="مثال: أحمد محمد"
             value={formData.name}
             onChange={handleChange}
             required
           />
 
-          <Input 
-            label="البريد الإلكتروني" 
+          <Input
+            label="البريد الإلكتروني"
             name="email"
-            type="email" 
+            type="email"
             placeholder="name@example.com"
             value={formData.email}
             onChange={handleChange}
@@ -110,51 +123,49 @@ const Signup: React.FC = () => {
           />
 
           <div className="grid grid-cols-2 gap-4">
-            <Input 
-                label="رقم الهاتف" 
-                name="phone"
-                type="tel" 
-                placeholder="01xxxxxxxxx"
-                value={formData.phone}
-                onChange={handleChange}
-                required
+            <Input
+              label="رقم الهاتف"
+              name="phone"
+              type="tel"
+              placeholder="01xxxxxxxxx"
+              value={formData.phone}
+              onChange={handleChange}
+              required
             />
-            
-            {/* 👇 قائمة اختيار النوع الجديدة */}
+
             <div className="flex flex-col gap-2">
-                <label className="text-sm font-bold text-gray-700">النوع</label>
-                <div className="relative">
-                    <select
-                        name="gender"
-                        value={formData.gender}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-forest focus:ring-2 focus:ring-forest/20 outline-none transition-all bg-gray-50 appearance-none cursor-pointer"
-                    >
-                        <option value="male">ذكر 👨</option>
-                        <option value="female">أنثى 👩</option>
-                    </select>
-                    {/* سهم صغير للتجميل */}
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                    </div>
+              <label className="text-sm font-bold text-gray-700">النوع</label>
+              <div className="relative">
+                <select
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-forest focus:ring-2 focus:ring-forest/20 outline-none transition-all bg-gray-50 appearance-none cursor-pointer"
+                >
+                  <option value="male">ذكر</option>
+                  <option value="female">أنثى</option>
+                </select>
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
                 </div>
+              </div>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
-            <Input 
-              label="كلمة المرور" 
+            <Input
+              label="كلمة المرور"
               name="password"
-              type="password" 
+              type="password"
               placeholder="••••••••"
               value={formData.password}
               onChange={handleChange}
               required
             />
-            <Input 
-              label="تأكيد كلمة المرور" 
+            <Input
+              label="تأكيد كلمة المرور"
               name="confirmPassword"
-              type="password" 
+              type="password"
               placeholder="••••••••"
               value={formData.confirmPassword}
               onChange={handleChange}

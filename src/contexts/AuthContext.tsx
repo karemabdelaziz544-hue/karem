@@ -1,29 +1,46 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { Session, User } from '@supabase/supabase-js';
+import Preloader from '../components/Preloader';
 import { supabase } from '../lib/supabase';
-
 import { Database } from '../types/supabase';
 
-// 1. تحديث الـ Interface ليشمل النوع الجديد والحقل الجديد
 export type Profile = Database['public']['Tables']['profiles']['Row'];
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  profile: Profile | null; 
+  profile: Profile | null;
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({ 
-  user: null, 
-  session: null, 
-  profile: null, 
-  loading: true, 
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  session: null,
+  profile: null,
+  loading: true,
   signOut: async () => {},
-  refreshProfile: async () => {} 
+  refreshProfile: async () => {},
 });
+
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 6000): Promise<T> => {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error('Auth request timed out'));
+    }, timeoutMs);
+
+    promise
+      .then((value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      });
+  });
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -31,17 +48,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // دالة لجلب بيانات البروفايل (محدثة لجلب assigned_doctor_id)
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*') // جلب كل الأعمدة بما فيها assigned_doctor_id و role
-        .eq('id', userId)
-        .single();
+      const { data, error } = await withTimeout(
+        supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
+      );
 
       if (error) throw error;
-      setProfile(data as Profile);
+      setProfile((data as Profile | null) ?? null);
     } catch (error) {
       console.error('Error fetching profile:', error);
       setProfile(null);
@@ -49,34 +63,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // 1. جلب الجلسة والبروفايل عند فتح التطبيق
+    let isMounted = true;
+
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await fetchProfile(session.user.id);
+      try {
+        const {
+          data: { session },
+        } = await withTimeout(supabase.auth.getSession());
+
+        if (!isMounted) return;
+
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        } else {
+          setProfile(null);
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        if (!isMounted) return;
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
     };
 
     initAuth();
 
-    // 2. الاستماع لتغييرات حالة الدخول
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!isMounted) return;
+
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
         await fetchProfile(session.user.id);
       } else {
         setProfile(null);
       }
-      setLoading(false);
+
+      if (isMounted) {
+        setLoading(false);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
@@ -89,12 +131,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshProfile = async () => {
-    if (user) await fetchProfile(user.id);
+    if (user) {
+      await fetchProfile(user.id);
+    }
   };
 
   return (
     <AuthContext.Provider value={{ user, session, profile, loading, signOut, refreshProfile }}>
-      {!loading && children}
+      {loading ? <Preloader /> : children}
     </AuthContext.Provider>
   );
 };
