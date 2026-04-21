@@ -1,148 +1,99 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Session, User } from '@supabase/supabase-js';
-import Preloader from '../components/Preloader';
 import { supabase } from '../lib/supabase';
-import { Database } from '../types/supabase';
+import { User } from '@supabase/supabase-js';
 
-export type Profile = Database['public']['Tables']['profiles']['Row'];
+type Profile = {
+  id: string;
+  role: 'admin' | 'doctor' | 'client';
+  full_name?: string;
+  [key: string]: any;
+};
 
-interface AuthContextType {
+type AuthContextType = {
   user: User | null;
-  session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
-}
+};
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  session: null,
   profile: null,
   loading: true,
-  signOut: async () => {},
-  refreshProfile: async () => {},
 });
 
-const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 6000): Promise<T> => {
-  return new Promise<T>((resolve, reject) => {
-    const timer = window.setTimeout(() => {
-      reject(new Error('Auth request timed out'));
-    }, timeoutMs);
-
-    promise
-      .then((value) => {
-        window.clearTimeout(timer);
-        resolve(value);
-      })
-      .catch((error) => {
-        window.clearTimeout(timer);
-        reject(error);
-      });
-  });
-};
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await withTimeout(
-        supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
-      );
-
-      if (error) throw error;
-      setProfile((data as Profile | null) ?? null);
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-      setProfile(null);
-    }
-  };
-
   useEffect(() => {
-    let isMounted = true;
+    // المتغير ده هو اللي بيحمينا من تداخل React ويمنع التعليق
+    let isActive = true;
 
-    const initAuth = async () => {
+    const loadUserData = async (sessionUser: User) => {
       try {
-        const {
-          data: { session },
-        } = await withTimeout(supabase.auth.getSession());
+        // استخدمنا maybeSingle بدل single عشان لو البروفايل مش موجود ميعملش Crash
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', sessionUser.id)
+          .maybeSingle();
 
-        if (!isMounted) return;
+        if (error) throw error;
 
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          await fetchProfile(session.user.id);
-        } else {
-          setProfile(null);
+        if (isActive) {
+          setUser(sessionUser);
+          setProfile(data as Profile);
+          setLoading(false);
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
-        if (!isMounted) return;
-        setSession(null);
-        setUser(null);
-        setProfile(null);
-      } finally {
-        if (isMounted) {
+        console.error('Error fetching profile:', error);
+        if (isActive) {
+          setUser(sessionUser); 
+          setProfile(null);
           setLoading(false);
         }
       }
     };
 
-    initAuth();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!isMounted) return;
-
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      } else {
-        setProfile(null);
+    // 1. التحقق السريع من الجلسة أول ما الموقع يفتح
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (isActive) {
+        if (session?.user) {
+          loadUserData(session.user);
+        } else {
+          setLoading(false); // لو مفيش يوزر، وقّف التحميل فوراً
+        }
       }
+    });
 
-      if (isMounted) {
+    // 2. مراقبة التغيرات (تسجيل دخول، خروج، تحديث الجلسة في الخلفية)
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isActive) return;
+
+      if (event === 'SIGNED_IN') {
+        if (session?.user) loadUserData(session.user);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setProfile(null);
         setLoading(false);
+      } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        // تحديث صامت بدون ما نطرد المستخدم لصفحة التحميل أو الـ Login
+        if (session?.user) setUser(session.user);
       }
     });
 
     return () => {
-      isMounted = false;
-      subscription.unsubscribe();
+      isActive = false; // تنظيف الـ Effect لمنع الـ Race Condition
+      authListener.subscription.unsubscribe();
     };
   }, []);
 
-  const signOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      setProfile(null);
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
-
-  const refreshProfile = async () => {
-    if (user) {
-      await fetchProfile(user.id);
-    }
-  };
-
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signOut, refreshProfile }}>
-      {loading ? <Preloader /> : children}
+    <AuthContext.Provider value={{ user, profile, loading }}>
+      {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+export const useAuth = () => useContext(AuthContext);

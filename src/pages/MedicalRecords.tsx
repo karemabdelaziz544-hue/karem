@@ -89,84 +89,61 @@ const MedicalRecords: React.FC = () => {
     };
 
     // 🔥 الدالة المحدثة لرفع صورة الـ InBody وتحليلها
-    const handleAnalyzeImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files || e.target.files.length === 0) return;
-        const file = e.target.files[0];
+// 2. هذا هو التعديل في دالة handleAnalyzeImage
+const handleAnalyzeImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
 
-        setAnalyzing(true);
-        const loadingToast = toast.loading('جارٍ رفع ومعالجة ورقة الـ InBody...');
+    setAnalyzing(true);
+    const loadingToast = toast.loading('جارٍ رفع ومعالجة ورقة الـ InBody...');
 
-        try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${currentProfile!.id}-${Date.now()}.${fileExt}`;
-            const filePath = `inbody/${fileName}`;
+    try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${currentProfile!.id}-${Date.now()}.${fileExt}`;
+        const filePath = `inbody/${fileName}`;
 
-            const { error: uploadError } = await supabase.storage
-                .from('medical-docs')
-                .upload(filePath, file);
+        // رفع الصورة
+        const { error: uploadError } = await supabase.storage
+            .from('medical-docs')
+            .upload(filePath, file);
 
-            if (uploadError) throw uploadError;
+        if (uploadError) throw uploadError;
 
-            const { data: { publicUrl } } = supabase.storage
-                .from('medical-docs')
-                .getPublicUrl(filePath);
+        const { data: { publicUrl } } = supabase.storage
+            .from('medical-docs')
+            .getPublicUrl(filePath);
 
-            setUploadedImageUrl(publicUrl);
+        setUploadedImageUrl(publicUrl);
 
-            const GROQ_API_KEY = await getGroqApiKey();
-            const base64 = await compressImage(file);
+        // ضغط الصورة
+        const base64 = await compressImage(file);
 
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${GROQ_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model: "meta-llama/llama-4-scout-17b-16e-instruct",
-                    messages: [
-                        {
-                            role: "user",
-                            content: [
-                                {
-                                    type: "text",
-                                    text: `Look at this InBody sheet carefully. Identify ACTUAL values for Weight, Muscle, and Fat. Return ONLY JSON: { "weight": 0, "muscle": 0, "fat": 0, "summary": "..." }`
-                                },
-                                { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64}` } }
-                            ]
-                        }
-                    ],
-                    temperature: 0.1,
-                    max_tokens: 500,
-                })
-            });
+        // استدعاء الـ Edge Function
+const { data, error: functionError } = await supabase.functions.invoke('analyze-inbody', {
+            body: { base64 }
+        });
+if (functionError) {
+             // لو الخطأ من الاتصال نفسه
+            throw new Error("فشل الاتصال بالخادم، يرجى المحاولة لاحقاً.");
+        }        
+        const result = data.data; // النتائج من الـ Function
 
-            const json = await response.json();
-            if (json.error) throw new Error(json.error.message);
-
-            const content = json.choices?.[0]?.message?.content;
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
-            if (!jsonMatch) throw new Error("فشل استخراج الأرقام من النص");
-
-            const data = JSON.parse(jsonMatch[0]);
-
-            if (data) {
-                setWeight(data.weight || '');
-                setMuscle(data.muscle || '');
-                setFat(data.fat || '');
-                setAiSummary(data.summary || '');
-                setShowInbodyForm(true);
-                toast.success("تم استخراج البيانات! راجعها واضغط حفظ", { id: loadingToast });
-            }
-
-        } catch (err: any) {
-            toast.error("حدث خطأ: " + err.message, { id: loadingToast });
-        } finally {
-            setAnalyzing(false);
-            e.target.value = '';
+        if (result) {
+            setWeight(result.weight?.toString() || '');
+            setMuscle(result.muscle?.toString() || '');
+            setFat(result.fat?.toString() || '');
+            setAiSummary(result.summary || '');
+            setShowInbodyForm(true);
+            toast.success("تم استخراج البيانات! راجعها واضغط حفظ", { id: loadingToast });
         }
-    };
 
+    } catch (err: any) {
+        toast.error("حدث خطأ: " + err.message, { id: loadingToast });
+    } finally {
+        setAnalyzing(false);
+        e.target.value = '';
+    }
+};
     // 🔥 الدالة المحدثة لحفظ الـ InBody برابط الصورة والتحليل
     const handleInbodySubmit = async (e: React.FormEvent) => {
         e.preventDefault();
