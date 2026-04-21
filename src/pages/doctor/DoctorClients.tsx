@@ -58,7 +58,7 @@ onClick={() => navigate(`/doctor-dashboard/client/${client.id}`)}              c
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300">
-                  {client.avatar_url ? <img src={client.avatar_url} className="w-full h-full object-cover rounded-2xl" /> : <User size={24}/>}
+                  {client.avatar_url ? <img src={client.avatar_url} loading="lazy" className="w-full h-full object-cover rounded-2xl" /> : <User size={24}/>}
                 </div>
                 <div>
                   <h3 className="font-black text-slate-800 text-sm">{client.full_name}</h3>

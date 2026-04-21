@@ -56,6 +56,7 @@ const EventBookings: React.FC = () => {
                 <div className="h-40 bg-gray-100 relative">
                     <img 
                         src={event.image_url || 'https://placehold.co/600x400'} 
+                        loading="lazy"
                         alt={event.title} 
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />

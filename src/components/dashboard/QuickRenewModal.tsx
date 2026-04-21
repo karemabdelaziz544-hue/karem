@@ -5,29 +5,23 @@ import { X, Upload, Check, Loader2, Calculator } from 'lucide-react';
 import Button from '../Button';
 import toast from 'react-hot-toast';
 
-// تعريف الأسعار (نفس الموجودة في المودال الآخر لتوحيد البيانات)
 const PRICING = {
   standard: { base: 500, extra: 100 },
-  pro: { base: 800, extra: 200 } // لو حابب تضيف منطق لمعرفة هو برو ولا عادي
+  pro: { base: 800, extra: 200 }
 };
 
 const QuickRenewModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const { currentProfile, familyMembers } = useFamily();
+  // 👇 استدعينا refreshFamily هنا
+  const { currentProfile, familyMembers, refreshFamily } = useFamily();
   const [receipt, setReceipt] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [calculatedAmount, setCalculatedAmount] = useState(0);
 
-  // حساب التكلفة أوتوماتيكياً بناءً على عدد الأفراد الحاليين
   useEffect(() => {
     if (currentProfile) {
-      // حساب عدد التابعين (نطرح 1 عشان المدير مش تابع)
       const subMembersCount = familyMembers.filter(m => m.manager_id === currentProfile.id).length;
-      
-      // هنا هنفترض إنه بيجدد على باقة Standard افتراضياً
-      // لو عندك حقل في الداتا بيز بيشيل نوع الباقة الحالية، ممكن نستخدمه هنا
       const basePrice = PRICING.standard.base; 
       const extraPrice = subMembersCount * PRICING.standard.extra;
-      
       setCalculatedAmount(basePrice + extraPrice);
     }
   }, [currentProfile, familyMembers]);
@@ -44,7 +38,7 @@ const QuickRenewModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
       const { error } = await supabase.from('payment_requests').insert([{
         user_id: currentProfile.id,
-        amount: calculatedAmount, // 👈 إرسال المبلغ المحسوب وليس 0
+        amount: calculatedAmount,
         plan_type: 'renewal',
         status: 'pending',
         receipt_url: urlData.publicUrl,
@@ -52,7 +46,6 @@ const QuickRenewModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       }]);
 
       if (error) {
-          // لو الخطأ بسبب تكرار الطلب (Constraint Violation)
           if (error.code === '23505') {
               throw new Error("لديك طلب تجديد معلق بالفعل.");
           }
@@ -61,8 +54,8 @@ const QuickRenewModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
       toast.success("تم إرسال طلب التجديد!");
       onClose();
-      // عمل ريفريش للصفحة عشان الحالة تتحدث
-      window.location.reload(); 
+      // 👇 التحديث السلس بدلاً من الـ reload المزعج
+      refreshFamily(); 
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -77,7 +70,6 @@ const QuickRenewModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         
         <h2 className="text-xl font-black text-gray-800 mb-2 text-center">تجديد الاشتراك الحالي 🔄</h2>
         
-        {/* عرض السعر المحسوب */}
         <div className="bg-gray-50 p-4 rounded-2xl mb-6 text-center border border-gray-100">
             <p className="text-gray-500 text-sm mb-1">إجمالي المبلغ المطلوب</p>
             <div className="flex items-center justify-center gap-2 text-3xl font-black text-forest">

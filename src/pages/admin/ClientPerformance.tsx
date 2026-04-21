@@ -123,7 +123,7 @@ const ClientPerformance: React.FC = () => {
             <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${client.isSubscribed ? (client.activePlan ? 'bg-forest' : 'bg-amber-500') : 'bg-slate-200'}`}></div>
 
             <div className="w-16 h-16 rounded-[1.5rem] bg-slate-50 overflow-hidden shrink-0 border-2 border-slate-50 shadow-inner group-hover:border-forest/20 transition-all">
-              {client.avatar_url ? <img src={client.avatar_url} className="w-full h-full object-cover" /> : <User className="w-full h-full p-4 text-slate-200" />}
+              {client.avatar_url ? <img src={client.avatar_url} loading="lazy" className="w-full h-full object-cover" /> : <User className="w-full h-full p-4 text-slate-200" />}
             </div>
 
             <div className="flex-1 text-right">

@@ -29,7 +29,6 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setLoading(true);
     
     try {
-      // 1. جلب العائلة كلها
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -38,39 +37,30 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (error) throw error;
 
       if (data) {
-        // 2. تحديد الحساب الرئيسي (الأب/الأم)
-        const manager = data.find(p => p.id === user.id);
+        // 👇 التعديل هنا: إخبار TypeScript بأن البيانات العائدة هي من نوع Profile
+        const profilesData = data as Profile[];
+        const manager = profilesData.find(p => p.id === user.id);
 
-        // 3. "توريث" حالة الاشتراك للأبناء
-        // بنعدل البيانات في الذاكرة (Frontend) بس، مش في الداتابيز، عشان العرض يبقى صح
-// داخل ملف FamilyContext.tsx - ابحث عن قسم الـ map واستبدله بهذا:
-const processedMembers = data.map(member => {
-    if (member.manager_id && manager) {
-        // المنطق الجديد:
-        // 1. لو الأب نفسه منتهي (expired)، يبقى الابن أكيد منتهي زيه.
-        // 2. لو الأب نشط، بنشوف حالة الابن في الداتابيز: 
-        //    لو الأدمن قفله (expired)، يفضل مقفول. لو هو نشط، يفضل نشط.
-        
-        const isManagerExpired = manager.subscription_status === 'expired';
-        const isMemberManuallyExpired = member.subscription_status === 'expired';
+        const processedMembers = profilesData.map(member => {
+            if (member.manager_id && manager) {
+                const isManagerExpired = manager.subscription_status === 'expired';
+                const isMemberManuallyExpired = member.subscription_status === 'expired';
 
-        return {
-            ...member,
-            // الابن يكون active فقط لو الأب active وكمان الابن نفسه مش expired
-            subscription_status: (isManagerExpired || isMemberManuallyExpired) ? 'expired' : 'active',
-            subscription_end_date: manager.subscription_end_date,
-            plan_tier: manager.plan_tier 
-        };
-    }
-    return member;
-});
+                return {
+                    ...member,
+                    subscription_status: (isManagerExpired || isMemberManuallyExpired) ? 'expired' : 'active',
+                    subscription_end_date: manager.subscription_end_date,
+                    plan_tier: manager.plan_tier 
+                } as Profile;
+            }
+            return member;
+        });
+
         setFamilyMembers(processedMembers);
 
-        // الحفاظ على البروفايل المختار، أو اختيار الرئيسي
         if (!currentProfile) {
             setCurrentProfile(processedMembers.find(p => p.id === user.id) || processedMembers[0]);
         } else {
-            // تحديث بيانات البروفايل المختار حالياً بالبيانات الجديدة
             const updatedCurrent = processedMembers.find(p => p.id === currentProfile.id);
             if (updatedCurrent) setCurrentProfile(updatedCurrent);
         }

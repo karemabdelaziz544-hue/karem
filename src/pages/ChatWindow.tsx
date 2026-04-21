@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { supabase } from '../lib/supabase'; // شيلنا نقطتين عشان هو في المجلد اللي قبله علطولimport { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useFamily } from '../contexts/FamilyContext';
 import { 
@@ -31,8 +31,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ type }) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  // 1. جلب المستلم (أدمن أو دكتور) بناءً على النوع
+  // 1. جلب المستلم والاشتراك اللحظي المحمي
   useEffect(() => {
+    let isMounted = true;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
     const initChat = async () => {
       if (!currentProfile) return;
       try {
@@ -44,31 +47,54 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ type }) => {
           .limit(1)
           .single();
         
-        if (data) {
+        if (data && isMounted) {
           setReceiverId(data.id);
           fetchMessages(currentProfile.id, data.id);
+
+          // 🧹 إنشاء القناة والاشتراك (محمية بفلتر قوي لمنع التسريب)
+          const channelName = `chat_${type}_${currentProfile.id}_${Date.now()}`;
+          channel = supabase.channel(channelName)
+            .on('postgres_changes', 
+              { 
+                event: 'INSERT', 
+                schema: 'public', 
+                table: 'messages',
+                // 🧹 فلترة لاستقبال رسائل هذا المحادثة فقط
+                filter: `or(and(sender_id.eq.${currentProfile.id},receiver_id.eq.${data.id}),and(sender_id.eq.${data.id},receiver_id.eq.${currentProfile.id}))`
+              }, 
+              (payload: any) => {
+                // تحديث الرسائل في لحظتها
+                if (isMounted) {
+                    setMessages(prev => [...prev, payload.new]);
+                    scrollToBottom();
+                }
+              }
+            ).subscribe();
         }
-      } catch (err) { console.error(err); }
-      finally { setLoading(false); }
+      } catch (err) { 
+          console.error(err); 
+      } finally { 
+          if (isMounted) setLoading(false); 
+      }
     };
 
     initChat();
 
-    // الاشتراك اللحظي
-const channel = supabase.channel(`chat:${type}`)
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload: any) => { // ضفنا : any هنا
-    if (currentProfile) fetchMessages(currentProfile.id, receiverId);
-  }).subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [currentProfile, type, receiverId]);
+    // 🧹 دالة التنظيف الفورية عند إغلاق الشات
+    return () => { 
+        isMounted = false;
+        if (channel) supabase.removeChannel(channel); 
+    };
+  }, [currentProfile, type]); // شيلنا receiverId عشان ميعملش Loop
 
   const fetchMessages = async (profileId: string, rId: string | null) => {
     if (!rId) return;
     const { data } = await supabase.from('messages')
       .select('*')
-      .eq('recipient_type', type) // فلترة حسب النوع (دكتور أو أدمن)
+      .eq('recipient_type', type) 
       .or(`and(sender_id.eq.${profileId},receiver_id.eq.${rId}),and(sender_id.eq.${rId},receiver_id.eq.${profileId})`)
       .order('created_at', { ascending: true });
+    
     setMessages(data || []);
     scrollToBottom();
   };
@@ -98,26 +124,27 @@ const channel = supabase.channel(`chat:${type}`)
         content: attachmentType === 'audio' ? '🎤 رسالة صوتية' : (newMessage || (attachmentType === 'image' ? '📷 صورة' : '📎 ملف')),
         attachment_url: attachmentUrl,
         attachment_type: attachmentType,
-        recipient_type: type, // 👈 التعديل الأهم للتمييز بين الدكتور والأدمن
+        recipient_type: type, 
         is_read: false
       }]);
 
       if (error) throw error;
 
-      // لو بنكلم دكتور، نرجع حالة الشات لـ active عشان يظهر عنده في القائمة
       if (type === 'doctor') {
         await supabase.from('profiles').update({ chat_status_with_doctor: 'active' }).eq('id', currentProfile.id);
       }
 
       setNewMessage('');
       setAttachment(null);
-      fetchMessages(currentProfile.id, receiverId);
+      
+      // مش محتاجين نعمل fetchMessages لأن הـ Realtime (payload.new) هيضيفها لوحده سريعاً
+      // fetchMessages(currentProfile.id, receiverId); 
+      
     } catch (error: any) {
       toast.error("فشل الإرسال");
     } finally { setUploading(false); }
   };
 
-  // ... (نفس دوال التسجيل والرفع اللي في كودك الأصلي)
   const startRecording = async () => {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -151,18 +178,18 @@ const channel = supabase.channel(`chat:${type}`)
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-gray-50/50">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
         {messages.map((msg, idx) => {
           const isMe = msg.sender_id === currentProfile?.id;
           return (
             <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[85%] p-4 rounded-2xl shadow-sm text-sm ${isMe ? 'bg-forest text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border border-gray-100'}`}>
-                <p className="whitespace-pre-wrap">{msg.content}</p>
+                <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                 {msg.attachment_url && (
                    <div className="mt-2">
                      {msg.attachment_type === 'image' ? <img src={msg.attachment_url} className="rounded-lg max-w-full" /> : 
                       msg.attachment_type === 'audio' ? <audio controls src={msg.attachment_url} className="w-48 h-8" /> : 
-                      <a href={msg.attachment_url} target="_blank" className="flex items-center gap-2 underline"><FileText size={14}/> ملف</a>}
+                      <a href={msg.attachment_url} target="_blank" className="flex items-center gap-2 underline font-bold"><FileText size={14}/> تحميل المرفق</a>}
                    </div>
                 )}
                 <div className={`text-[10px] mt-1 flex justify-end gap-1 ${isMe ? 'text-white/70' : 'text-gray-400'}`}>
@@ -176,16 +203,19 @@ const channel = supabase.channel(`chat:${type}`)
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-4 bg-white border-t border-gray-100">
+      <div className="p-4 bg-white border-t border-gray-100 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
         {attachment && (
-            <div className="mb-2 p-2 bg-gray-100 rounded-lg flex items-center justify-between text-xs font-bold">
-                <span>{attachment.name}</span>
-                <button onClick={() => setAttachment(null)} className="text-red-500"><X size={14}/></button>
+            <div className="mb-2 p-2 bg-gray-100 rounded-xl flex items-center justify-between text-xs font-bold border border-gray-200">
+                <span className="flex items-center gap-2">
+                  {attachment.type.startsWith('image') ? <ImageIcon size={14} className="text-forest"/> : attachment.type.startsWith('audio') ? <Mic size={14} className="text-blue-500"/> : <FileText size={14} className="text-gray-500"/>}
+                  {attachment.name}
+                </span>
+                <button onClick={() => setAttachment(null)} className="text-red-500 bg-red-50 p-1 rounded-full hover:bg-red-100 transition-colors"><X size={14}/></button>
             </div>
         )}
         <form onSubmit={sendMessage} className="flex gap-2 items-end">
           <input type="file" ref={fileInputRef} onChange={(e) => e.target.files && setAttachment(e.target.files[0])} className="hidden" />
-          <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-gray-400 hover:text-forest transition-colors">
+          <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 bg-gray-50 text-gray-400 hover:text-forest hover:bg-forest/5 rounded-xl transition-all border border-transparent hover:border-forest/20">
             <Paperclip size={20} />
           </button>
           
@@ -194,20 +224,20 @@ const channel = supabase.channel(`chat:${type}`)
             value={newMessage} 
             onChange={(e) => setNewMessage(e.target.value)} 
             placeholder="اكتب رسالتك..." 
-            className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-forest" 
+            className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-forest focus:bg-white transition-all shadow-inner" 
             disabled={isRecording}
           />
 
           <button 
             type="button" 
             onClick={isRecording ? stopRecording : startRecording} 
-            className={`p-3 rounded-xl transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-gray-100 text-gray-600'}`}
+            className={`p-3 rounded-xl transition-all border ${isRecording ? 'bg-red-50 border-red-500 text-red-500 animate-pulse' : 'bg-gray-50 border-transparent text-gray-400 hover:bg-gray-100'}`}
           >
             {isRecording ? <StopCircle size={20} /> : <Mic size={20} />}
           </button>
 
           {(newMessage.trim() || attachment) && (
-            <button type="submit" disabled={uploading} className="bg-forest text-white p-3 rounded-xl">
+            <button type="submit" disabled={uploading} className="bg-forest text-white p-3 rounded-xl hover:bg-forest/90 transition-colors shadow-lg shadow-forest/20 active:scale-95">
               {uploading ? <Loader2 className="animate-spin" size={20}/> : <Send size={20} />}
             </button>
           )}

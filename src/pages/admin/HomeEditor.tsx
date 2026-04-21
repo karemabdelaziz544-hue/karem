@@ -9,7 +9,6 @@ import {
 import { toast } from 'react-hot-toast';
 import ImageCropper from '../../components/ImageCropper';
 
-// مكتبة الأيقونات الموسعة
 const ICON_PICKER_LIST = [
   'Activity', 'Apple', 'Heart', 'Dumbbell', 'Coffee', 'Utensils', 'Beef', 'Salad', 'Stethoscope', 'Target', 
   'Zap', 'Flame', 'TrendingUp', 'Shield', 'User', 'Users', 'MessageCircle', 'Phone', 'Calendar', 'Star',
@@ -22,7 +21,6 @@ const HomeEditor = () => {
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<any>(null);
   
-  // حالات الصور والقص
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isCropping, setIsCropping] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -39,7 +37,6 @@ const HomeEditor = () => {
     setLoading(false);
   };
 
-  // منطق اختيار الملفات
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>, section: string, index?: number) => {
     if (e.target.files && e.target.files.length > 0) {
       setTargetType({ section, index });
@@ -52,8 +49,7 @@ const HomeEditor = () => {
     }
   };
 
-  // منطق إنهاء القص والرفع
-const handleCropDone = async (croppedAreaPixels: any) => {
+  const handleCropDone = async (croppedAreaPixels: any) => {
     setIsCropping(false);
     setUploading(true);
     const loadingToast = toast.loading('جاري معالجة ورفع الصورة...');
@@ -75,21 +71,19 @@ const handleCropDone = async (croppedAreaPixels: any) => {
         croppedAreaPixels.width, croppedAreaPixels.height
       );
 
-      const blob = await new Promise<Blob>((res) => canvas.toBlob((b) => res(b!), 'image/jpeg', 0.8));
+      // بنحول الصورة لـ WebP مضغوط بنسبة 80% هنا أوتوماتيكياً
+      const blob = await new Promise<Blob>((res) => canvas.toBlob((b) => res(b!), 'image/webp', 0.8));
       
-      // اسم ملف فريد لكل عملية رفع لضمان عدم التداخل
-      const fileName = `${targetType?.section}-${Date.now()}.jpg`;
+      const fileName = `${targetType?.section}-${Date.now()}.webp`; // بنغير الامتداد هنا لـ webp
 
-      // الرفع لـ Supabase
       const { error: uploadError } = await supabase.storage
-        .from('landing-images') // تأكد إن الاسم ده هو اللي انشأته في Storage
+        .from('landing-images')
         .upload(fileName, blob);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage.from('landing-images').getPublicUrl(fileName);
 
-      // تحديث الإعدادات محلياً قبل الحفظ النهائي
       const ns = { ...settings };
 
       if (targetType?.section === 'hero') {
@@ -99,7 +93,6 @@ const handleCropDone = async (croppedAreaPixels: any) => {
         ns.about_section.cards[targetType.index].image = publicUrl;
       } 
       else if (targetType?.section === 'success_avatar' && targetType.index !== undefined) {
-        // التأكد من وجود المصفوفة قبل التعديل عليها
         if (!ns.hero_section.success_avatars) {
           ns.hero_section.success_avatars = ["", "", "", ""];
         }
@@ -117,7 +110,7 @@ const handleCropDone = async (croppedAreaPixels: any) => {
       setSelectedImage(null);
     }
   };
-  // منطق الحفظ النهائي
+
   const handleSave = async () => {
     setSaving(true);
     const { error } = await supabase.from('landing_page_settings').update(settings).eq('id', 'main_page');
@@ -130,7 +123,6 @@ const handleCropDone = async (croppedAreaPixels: any) => {
 
   return (
     <div className="max-w-6xl mx-auto pb-20 px-4 font-tajawal" dir="rtl">
-      {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-black text-slate-800 italic">إدارة الواجهة 🎨</h1>
@@ -142,7 +134,6 @@ const handleCropDone = async (croppedAreaPixels: any) => {
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">
-        {/* Sidebar */}
         <aside className="md:w-64 flex flex-col gap-2">
           <TabButton active={activeTab === 'hero'} onClick={() => setActiveTab('hero')} icon={<Layout size={18}/>} label="قسم الـ Hero" />
           <TabButton active={activeTab === 'about'} onClick={() => setActiveTab('about')} icon={<Info size={18}/>} label="عن هيليكس (Bento)" />
@@ -152,23 +143,22 @@ const handleCropDone = async (croppedAreaPixels: any) => {
 
         <main className="flex-1 bg-white rounded-[2.5rem] p-6 md:p-8 shadow-sm border border-slate-100 min-h-[500px]">
           
-          {/* 1. Hero Section */}
           {activeTab === 'hero' && (
             <div className="space-y-10 animate-in fade-in">
                <h3 className="text-xl font-black text-forest border-b pb-4 italic">إعدادات الواجهة الرئيسية</h3>
                
-               {/* الصورة الرئيسية للهيرو */}
                <div className="bg-slate-50 p-6 rounded-3xl border border-dashed border-slate-200 flex flex-col md:flex-row gap-6 items-center">
                   <div className="w-40 h-40 rounded-3xl overflow-hidden border-4 border-white shadow-md shrink-0 bg-white">
-                    <img src={settings?.hero_section?.image_url} className="w-full h-full object-cover" alt="Hero" />
+                    {/* 👇 تم إضافة loading="lazy" */}
+                    <img src={settings?.hero_section?.image_url} loading="lazy" className="w-full h-full object-cover" alt="Hero" />
                   </div>
                   <label className="bg-white border-2 border-forest text-forest px-6 py-2 rounded-xl font-black cursor-pointer hover:bg-forest hover:text-white transition-all shadow-sm">
                     تغيير وقص صورة الهيرو
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => onFileChange(e, 'hero')} />
+                    {/* 👇 السماح بجميع الصيغ بما فيها WebP */}
+                    <input type="file" accept="image/*, image/webp" className="hidden" onChange={(e) => onFileChange(e, 'hero')} />
                   </label>
                </div>
 
-               {/* نصوص الهيرو */}
                <div className="space-y-4">
                  <InputGroup label="النص الصغير (Badge)" value={settings?.hero_section?.badge} onChange={(v: string) => setSettings({...settings, hero_section: {...settings.hero_section, badge: v}})} />
                  <div className="grid grid-cols-3 gap-3">
@@ -179,7 +169,6 @@ const handleCropDone = async (croppedAreaPixels: any) => {
                  <TextareaGroup label="الوصف الرئيسي" value={settings?.hero_section?.description} onChange={(v: string) => setSettings({...settings, hero_section: {...settings.hero_section, description: v}})} />
                </div>
 
-               {/* الأزرار */}
                <div className="grid md:grid-cols-2 gap-6 pt-4">
                  {['primary_btn', 'secondary_btn'].map((btnKey) => {
                    const btnData = settings?.hero_section?.[btnKey] || { show: true, text: '', link: '' };
@@ -209,7 +198,6 @@ const handleCropDone = async (croppedAreaPixels: any) => {
                  })}
                </div>
 
-               {/* إحصائيات النجاح */}
                <div className="p-6 bg-orange/5 rounded-3xl border border-orange/10 space-y-6">
                   <h4 className="font-black text-orange flex items-center gap-2"><UsersIcon size={18}/> إحصائيات قصص النجاح</h4>
                   <div className="grid md:grid-cols-2 gap-4">
@@ -223,11 +211,13 @@ const handleCropDone = async (croppedAreaPixels: any) => {
                       {(settings?.hero_section?.success_avatars || [1,2,3,4]).map((url: string, idx: number) => (
                         <div key={idx} className="relative group shrink-0">
                           <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-sm bg-white">
-                            <img src={typeof url === 'string' ? url : `https://picsum.photos/100/100?random=${idx}`} className="w-full h-full object-cover" alt="User" />
+                            {/* 👇 إضافة lazy للـ avatars */}
+                            <img src={typeof url === 'string' ? url : `https://picsum.photos/100/100?random=${idx}`} loading="lazy" className="w-full h-full object-cover" alt="User" />
                           </div>
                           <label className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-all">
                             <ImageIcon size={16} className="text-white"/>
-                            <input type="file" accept="image/*" className="hidden" onChange={(e) => onFileChange(e, 'success_avatar', idx)} />
+                            {/* 👇 السماح بـ Webp */}
+                            <input type="file" accept="image/*, image/webp" className="hidden" onChange={(e) => onFileChange(e, 'success_avatar', idx)} />
                           </label>
                         </div>
                       ))}
@@ -237,7 +227,6 @@ const handleCropDone = async (croppedAreaPixels: any) => {
             </div>
           )}
 
-          {/* 2. About Section (Bento Cards) */}
           {activeTab === 'about' && (
             <div className="space-y-8 animate-in fade-in">
                <h3 className="text-xl font-black text-forest border-b pb-4 italic">إدارة كروت المميزات (Bento)</h3>
@@ -249,12 +238,14 @@ const handleCropDone = async (croppedAreaPixels: any) => {
                    <div key={idx} className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
                       <div className="flex flex-col md:flex-row gap-6 items-start">
                         <div className="w-32 h-32 rounded-2xl overflow-hidden border-2 border-white shadow-sm shrink-0 bg-white">
-                          <img src={card.image} className="w-full h-full object-cover" alt="Card" />
+                          {/* 👇 إضافة lazy */}
+                          <img src={card.image} loading="lazy" className="w-full h-full object-cover" alt="Card" />
                         </div>
                         <div className="flex-1 space-y-4 w-full">
                           <label className="inline-flex items-center gap-2 bg-white border border-forest text-forest px-4 py-2 rounded-lg text-xs font-black cursor-pointer hover:bg-forest hover:text-white transition-all shadow-sm">
                             <ImageIcon size={14}/> تغيير وقص الصورة
-                            <input type="file" accept="image/*" className="hidden" onChange={(e) => onFileChange(e, 'about', idx)} />
+                            {/* 👇 السماح بـ Webp */}
+                            <input type="file" accept="image/*, image/webp" className="hidden" onChange={(e) => onFileChange(e, 'about', idx)} />
                           </label>
                           <InputGroup label="عنوان الكارت" value={card.title} onChange={(v: string) => {
                             const newCards = [...settings.about_section.cards]; newCards[idx].title = v;
@@ -272,7 +263,6 @@ const handleCropDone = async (croppedAreaPixels: any) => {
             </div>
           )}
 
-          {/* 3. Steps Section */}
           {activeTab === 'steps' && (
             <div className="space-y-6 animate-in fade-in">
               <div className="flex justify-between items-center border-b pb-4">
@@ -328,7 +318,6 @@ const handleCropDone = async (croppedAreaPixels: any) => {
             </div>
           )}
 
-          {/* 4. FAQ Section */}
           {activeTab === 'faq' && (
             <div className="space-y-6 animate-in fade-in">
               <div className="flex justify-between items-center border-b pb-4">
@@ -361,7 +350,6 @@ const handleCropDone = async (croppedAreaPixels: any) => {
         </main>
       </div>
 
-      {/* مودال القص العام */}
       {isCropping && (
         <ImageCropper
           image={selectedImage}
@@ -374,7 +362,6 @@ const handleCropDone = async (croppedAreaPixels: any) => {
   );
 };
 
-// --- المكونات المساعدة ---
 const TabButton = ({ active, onClick, icon, label }: any) => (
   <button onClick={onClick} className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-black transition-all ${active ? 'bg-forest text-white shadow-lg translate-x-[-8px]' : 'text-slate-400 hover:bg-slate-100'}`}>
     {icon} <span className="text-sm">{label}</span>

@@ -19,14 +19,7 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      const { data: { user }, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       if (!user) throw new Error('لم يتم العثور على بيانات المستخدم.');
 
@@ -42,6 +35,22 @@ const Login: React.FC = () => {
       toast.error('خطأ في بيانات الدخول: ' + (error.message || 'خطأ غير معروف'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 👇 دالة نسيان كلمة المرور الجديدة
+  const handleResetPassword = async () => {
+    if (!email) {
+      toast.error('يرجى إدخال بريدك الإلكتروني في الحقل المخصص أولاً.');
+      return;
+    }
+    const loadingToast = toast.loading('جاري إرسال رابط الاستعادة...');
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) throw error;
+      toast.success('تم إرسال رابط استعادة كلمة المرور إلى بريدك!', { id: loadingToast });
+    } catch (error: any) {
+      toast.error('حدث خطأ: ' + error.message, { id: loadingToast });
     }
   };
 
@@ -86,7 +95,8 @@ const Login: React.FC = () => {
           />
 
           <div className="flex justify-between items-center mb-6 text-sm font-bold">
-            <a href="#" className="text-orange hover:underline">نسيت كلمة المرور؟</a>
+            {/* 👇 الزر تم تحويله ليستخدم دالة الاستعادة */}
+            <button type="button" onClick={handleResetPassword} className="text-orange hover:underline">نسيت كلمة المرور؟</button>
             <label className="flex items-center gap-2 cursor-pointer text-forest">
               <input type="checkbox" className="rounded accent-orange" />
               <span>تذكرني</span>

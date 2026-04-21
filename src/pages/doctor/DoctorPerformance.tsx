@@ -114,7 +114,7 @@ const DoctorPerformance: React.FC = () => {
             className="bg-white p-5 rounded-[2.5rem] border border-slate-100 flex items-center gap-4 group hover:shadow-lg transition-all cursor-pointer active:scale-[0.99]"
           >
             <div className="w-14 h-14 bg-slate-50 rounded-2xl overflow-hidden shrink-0 border border-slate-100">
-               {client.avatar_url ? <img src={client.avatar_url} className="w-full h-full object-cover" /> : <User className="w-full h-full p-3 text-slate-200" />}
+               {client.avatar_url ? <img src={client.avatar_url} loading="lazy" className="w-full h-full object-cover" /> : <User className="w-full h-full p-3 text-slate-200" />}
             </div>
             <div className="flex-1">
                <h3 className="font-black text-slate-800 text-sm">{client.full_name}</h3>

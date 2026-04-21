@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Check, X, Clock, FileText, RefreshCw, Eye, Calendar ,Users} from 'lucide-react';
+import { Check, X, Clock, FileText, RefreshCw, Eye, Calendar, Users, AlertTriangle } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import toast from 'react-hot-toast';
 import Avatar from '../../components/Avatar';
@@ -29,6 +29,13 @@ const AdminPayments: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
+  // 👇 متغيرات المودال
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    action: 'approved' | 'rejected' | null;
+    request: PaymentRequest | null;
+  }>({ isOpen: false, action: null, request: null });
+
   const fetchRequests = async () => {
     setLoading(true);
     try {
@@ -51,63 +58,71 @@ const AdminPayments: React.FC = () => {
     fetchRequests();
   }, []);
 
-const handleStatusUpdate = async (request: PaymentRequest, newStatus: 'approved' | 'rejected') => {
-  if (!window.confirm(newStatus === 'approved' ? 'تأكيد تفعيل الباقة؟' : 'رفض الطلب؟')) return;
-  
-  setProcessingId(request.id);
-  try {
-if (newStatus === 'approved') {
-  const newExpiryDate = addDays(new Date(), 30).toISOString();
-  
-  // 1. استخراج الـ IDs والتأكد من أنها مصفوفة
-  const keepIds = Array.isArray(request.renewal_metadata?.keep_member_ids) 
-                  ? request.renewal_metadata.keep_member_ids 
-                  : [];
+  const openConfirmModal = (request: PaymentRequest, action: 'approved' | 'rejected') => {
+    setConfirmModal({ isOpen: true, action, request });
+  };
 
-  // 2. تحديث الحساب الرئيسي
-  await supabase.from('profiles').update({ 
-    subscription_status: 'active',
-    subscription_end_date: newExpiryDate 
-  }).eq('id', request.user_id);
+  const closeConfirmModal = () => {
+    setConfirmModal({ isOpen: false, action: null, request: null });
+  };
 
-  // 3. جلب "كل" الحسابات التابعة لهذا المدير أولاً لمعرفتها
-  const { data: allSubAccounts } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('manager_id', request.user_id);
+  // 👇 الدالة اللي هتتنفذ من جوه المودال
+  const executeStatusUpdate = async () => {
+    const { request, action: newStatus } = confirmModal;
+    if (!request || !newStatus) return;
+    
+    closeConfirmModal();
+    setProcessingId(request.id);
 
-  if (allSubAccounts && allSubAccounts.length > 0) {
-    // 4. تنفيذ التحديث لكل حساب على حدة لضمان تخطي أي تعليق في الـ Cache
-    for (const account of allSubAccounts) {
-      const shouldBeActive = keepIds.includes(account.id);
-      
-      await supabase
-        .from('profiles')
-        .update({ 
-          subscription_status: shouldBeActive ? 'active' : 'expired',
-          subscription_end_date: shouldBeActive ? newExpiryDate : null
-        })
-        .eq('id', account.id);
+    try {
+      if (newStatus === 'approved') {
+        const newExpiryDate = addDays(new Date(), 30).toISOString();
+        const keepIds = Array.isArray(request.renewal_metadata?.keep_member_ids) 
+                        ? request.renewal_metadata.keep_member_ids 
+                        : [];
+
+        await supabase.from('profiles').update({ 
+          subscription_status: 'active',
+          subscription_end_date: newExpiryDate 
+        }).eq('id', request.user_id);
+
+        const { data: allSubAccounts } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('manager_id', request.user_id);
+
+        if (allSubAccounts && allSubAccounts.length > 0) {
+          for (const account of allSubAccounts) {
+            const shouldBeActive = keepIds.includes(account.id);
+            await supabase
+              .from('profiles')
+              .update({ 
+                subscription_status: shouldBeActive ? 'active' : 'expired',
+                subscription_end_date: shouldBeActive ? newExpiryDate : null
+              })
+              .eq('id', account.id);
+          }
+        }
+      }
+
+      const { error: requestErr } = await supabase
+        .from('payment_requests')
+        .update({ status: newStatus })
+        .eq('id', request.id);
+
+      if (requestErr) throw requestErr;
+
+      toast.success("تمت العملية بنجاح وتحديث الحسابات");
+      fetchRequests();
+    } catch (error) {
+      console.error("Critical Admin Error:", error);
+      toast.error("حدث خطأ");
+    } finally {
+      setProcessingId(null);
     }
-  }
-}
-    // 5. تحديث حالة الطلب
-    const { error: requestErr } = await supabase
-      .from('payment_requests')
-      .update({ status: newStatus })
-      .eq('id', request.id);
+  }; 
 
-    if (requestErr) throw requestErr;
-
-    toast.success("تمت العملية بنجاح وتحديث الحسابات");
-    fetchRequests();
-  } catch (error) {
-    console.error("Critical Admin Error:", error);
-    toast.error("حدث خطأ");
-  } finally {
-    setProcessingId(null);
-  }
-}; const filteredRequests = requests.filter(r => 
+  const filteredRequests = requests.filter(r => 
     activeTab === 'pending' ? r.status === 'pending' : r.status !== 'pending'
   );
 
@@ -121,7 +136,6 @@ if (newStatus === 'approved') {
         </button>
       </div>
 
-      {/* Tabs */}
       <div className="flex bg-white p-1 rounded-xl border border-gray-200 w-fit">
         <button 
           onClick={() => setActiveTab('pending')}
@@ -142,7 +156,6 @@ if (newStatus === 'approved') {
         </button>
       </div>
 
-      {/* Content Area */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
         {loading && requests.length === 0 ? (
            <div className="p-20 text-center flex flex-col items-center gap-3">
@@ -185,7 +198,7 @@ if (newStatus === 'approved') {
                           {req.plan_type === 'helix_integrated' ? 'هيليكس المتكاملة' : req.plan_type}
                         </span>
                         <div className="flex items-center gap-1 text-[10px] text-forest font-bold">
-                           <Users size={10}/> سعة العائلة: {req.renewal_metadata?.sub_count + 1} أفراد
+                           <Users size={10}/> سعة العائلة: {req.renewal_metadata?.sub_count !== undefined ? req.renewal_metadata.sub_count + 1 : 1} أفراد
                         </div>
                       </div>
                     </td>
@@ -204,14 +217,14 @@ if (newStatus === 'approved') {
                       {req.status === 'pending' ? (
                         <div className="flex items-center gap-2">
                           <button 
-                            onClick={() => handleStatusUpdate(req, 'approved')}
+                            onClick={() => openConfirmModal(req, 'approved')}
                             disabled={!!processingId}
                             className="w-10 h-10 flex items-center justify-center bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors shadow-lg shadow-green-100 disabled:opacity-50"
                           >
-                            <Check size={20} />
+                            {processingId === req.id ? <RefreshCw size={16} className="animate-spin"/> : <Check size={20} />}
                           </button>
                           <button 
-                            onClick={() => handleStatusUpdate(req, 'rejected')}
+                            onClick={() => openConfirmModal(req, 'rejected')}
                             disabled={!!processingId}
                             className="w-10 h-10 flex items-center justify-center bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors disabled:opacity-50"
                           >
@@ -231,6 +244,42 @@ if (newStatus === 'approved') {
           </div>
         )}
       </div>
+
+      {/* 👇 المودال الاحترافي الجديد */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-xl animate-in zoom-in-95 relative text-center">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${confirmModal.action === 'approved' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+              {confirmModal.action === 'approved' ? <Check size={32} /> : <AlertTriangle size={32} />}
+            </div>
+            
+            <h3 className="text-xl font-black text-gray-800 mb-2">
+              {confirmModal.action === 'approved' ? 'تأكيد تفعيل الباقة؟' : 'رفض طلب الدفع؟'}
+            </h3>
+            
+            <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+              {confirmModal.action === 'approved' 
+                ? 'هل تأكدت من وصول المبلغ المطلوب وصحة إيصال الدفع؟ سيتم تفعيل باقة العميل فوراً.' 
+                : 'هل أنت متأكد من رفض هذا الطلب؟ لن يتم تفعيل الباقة لهذا العميل.'}
+            </p>
+
+            <div className="flex gap-3">
+              <button 
+                onClick={closeConfirmModal}
+                className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+              >
+                إلغاء
+              </button>
+              <button 
+                onClick={executeStatusUpdate}
+                className={`flex-1 py-3 text-white rounded-xl font-bold transition-colors shadow-lg ${confirmModal.action === 'approved' ? 'bg-green-500 hover:bg-green-600 shadow-green-200' : 'bg-red-500 hover:bg-red-600 shadow-red-200'}`}
+              >
+                تأكيد
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

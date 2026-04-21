@@ -89,7 +89,7 @@ const EventDetailsPage: React.FC = () => {
       {/* كارت تفاصيل الايفينت */}
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-200 mb-8 flex flex-col md:flex-row gap-8">
         <div className="w-full md:w-1/3 h-48 md:h-auto bg-gray-100 rounded-2xl overflow-hidden relative">
-            <img src={event.image_url || 'https://placehold.co/600x400'} alt={event.title} className="w-full h-full object-cover" />
+            <img src={event.image_url || 'https://placehold.co/600x400'}loading="lazy" alt={event.title} className="w-full h-full object-cover" />
             <div className="absolute top-2 right-2 bg-forest text-white px-3 py-1 rounded-lg text-xs font-bold">
                 {(event.price ?? 0) > 0 ? `${event.price} ج.م` : 'مجاني'}
             </div>

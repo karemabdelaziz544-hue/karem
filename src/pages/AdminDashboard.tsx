@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+// 👇 التعديل: إزالة useAuth وإضافة useNavigate
+import { useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
 import Button from '../components/Button';
 import { Users, Save, X, Plus, Trash2, Calendar, CheckCircle, Search, PlusCircle } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
-  const { signOut } = useAuth();
+  const navigate = useNavigate(); // 👈 أضفنا useNavigate
   
-  // --- State Management ---
   const [users, setUsers] = useState<any[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -16,15 +16,12 @@ const AdminDashboard: React.FC = () => {
   const [planTitle, setPlanTitle] = useState("");
   const [loading, setLoading] = useState(true);
   
-  // إدارة الأيام والمهام ديناميكياً
-  // الشكل: [{ id: 1, tasks: ["فطار: بيض", "غداء: دجاج"] }, ...]
   const [days, setDays] = useState([{ id: 1, tasks: [""] }]); 
 
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  // تصفية المستخدمين عند البحث
   useEffect(() => {
     const filtered = users.filter(u => 
       u.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -34,7 +31,6 @@ const AdminDashboard: React.FC = () => {
   }, [searchQuery, users]);
 
   const fetchUsers = async () => {
-    // جلب العملاء فقط (ليس الأدمن)
     const { data } = await supabase
       .from('profiles')
       .select('*')
@@ -46,49 +42,39 @@ const AdminDashboard: React.FC = () => {
     setLoading(false);
   };
 
-  // --- دوال إدارة النموذج (أيام ومهام) ---
-  
-  // إضافة يوم جديد
   const addDay = () => {
     setDays([...days, { id: days.length + 1, tasks: [""] }]);
   };
 
-  // حذف يوم
   const removeDay = (index: number) => {
-    if (days.length === 1) return; // لا يمكن حذف اليوم الوحيد
+    if (days.length === 1) return;
     const newDays = days.filter((_, i) => i !== index);
-    // إعادة ترتيب أرقام الأيام لتكون متسلسلة (1, 2, 3...)
     const reorderedDays = newDays.map((day, i) => ({ ...day, id: i + 1 }));
     setDays(reorderedDays);
   };
 
-  // إضافة مهمة داخل يوم معين
   const addTaskToDay = (dayIndex: number) => {
     const newDays = [...days];
     newDays[dayIndex].tasks.push("");
     setDays(newDays);
   };
 
-  // حذف مهمة من يوم معين
   const removeTaskFromDay = (dayIndex: number, taskIndex: number) => {
     const newDays = [...days];
     newDays[dayIndex].tasks = newDays[dayIndex].tasks.filter((_, i) => i !== taskIndex);
     setDays(newDays);
   };
 
-  // تحديث نص المهمة
   const updateTaskContent = (dayIndex: number, taskIndex: number, value: string) => {
     const newDays = [...days];
     newDays[dayIndex].tasks[taskIndex] = value;
     setDays(newDays);
   };
 
-  // حفظ وإرسال الخطة
   const savePlan = async () => {
     if (!selectedUser || !planTitle.trim()) return alert("يرجى كتابة عنوان الخطة واختيار العميل");
 
     try {
-      // 1. إنشاء الخطة الرئيسية في جدول plans
       const { data: plan, error: planError } = await supabase
         .from('plans')
         .insert([{ user_id: selectedUser, title: planTitle }])
@@ -97,7 +83,6 @@ const AdminDashboard: React.FC = () => {
 
       if (planError) throw planError;
 
-      // 2. تجهيز المهام للإدخال (تجميع كل الأيام في مصفوفة واحدة)
       const allTasks: any[] = [];
       days.forEach((day) => {
         day.tasks.forEach((taskContent) => {
@@ -105,29 +90,26 @@ const AdminDashboard: React.FC = () => {
             allTasks.push({
               plan_id: plan.id,
               content: taskContent.trim(),
-              day_number: day.id, // 👈 هنا نربط المهمة برقم اليوم
+              day_number: day.id,
               is_completed: false
             });
           }
         });
       });
 
-      // 3. إدخال المهام في جدول plan_tasks
       if (allTasks.length > 0) {
         const { error: tasksError } = await supabase.from('plan_tasks').insert(allTasks);
         if (tasksError) throw tasksError;
       }
 
-      // 4. تحديث حالة العميل إلى "نشط"
       await supabase.from('profiles').update({ subscription_status: 'active' }).eq('id', selectedUser);
       
       alert("تم إرسال الخطة بنجاح! 🚀");
       
-      // إعادة تعيين النموذج
       setPlanTitle("");
       setDays([{ id: 1, tasks: [""] }]);
       setSelectedUser(null);
-      fetchUsers(); // تحديث القائمة لتظهر الحالة الجديدة
+      fetchUsers();
       
     } catch (error: any) {
       alert("حدث خطأ: " + error.message);
@@ -138,7 +120,6 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6 font-sans" dir="rtl">
-      
       <header className="flex justify-between items-center mb-8 bg-white p-4 rounded-2xl shadow-sm border border-gray-200">
         <div className="flex items-center gap-3">
            <div className="bg-forest p-1.5 rounded-lg"><Logo className="h-8 w-8" /></div>
@@ -147,12 +128,12 @@ const AdminDashboard: React.FC = () => {
              <p className="text-xs text-gray-500">بناء الخطط اليومية</p>
            </div>
         </div>
-        <Button variant="outline" onClick={() => signOut()} className="text-sm h-10 px-4">خروج</Button>
+        {/* 👇 التعديل: استخدام supabase.auth.signOut() مع التوجيه */}
+        <Button variant="outline" onClick={async () => { await supabase.auth.signOut(); navigate('/login'); }} className="text-sm h-10 px-4">خروج</Button>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-150px)]">
         
-        {/* === القائمة الجانبية (العملاء) === */}
         <div className="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
           <div className="p-4 border-b border-gray-100 bg-gray-50">
             <h2 className="font-bold text-lg text-forest flex items-center gap-2"><Users size={20} /> قائمة العملاء</h2>
@@ -189,7 +170,6 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* === منطقة بناء الخطة === */}
         <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
           {selectedUser ? (
             <div className="flex flex-col h-full">
@@ -210,7 +190,6 @@ const AdminDashboard: React.FC = () => {
                   />
                 </div>
 
-                {/* الأيام الديناميكية */}
                 <div className="space-y-6">
                   {days.map((day, dayIndex) => (
                     <div key={dayIndex} className="bg-gray-50 p-5 rounded-2xl border border-gray-200 relative group-day">

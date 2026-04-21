@@ -1,26 +1,32 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 import { useFamily } from '../contexts/FamilyContext';
+import { supabase } from '../lib/supabase'; 
+import toast from 'react-hot-toast'; 
 import Logo from '../components/Logo';
 import { LayoutDashboard, History, CreditCard, LogOut, Menu, X, MessageSquare, FileText, Users, ChevronDown, Check, Settings, Loader2 } from 'lucide-react';
 import NotificationsMenu from '../components/NotificationsMenu';
 import Avatar from '../components/Avatar';
 
 const ClientLayout: React.FC = () => {
-  const { signOut } = useAuth();
-  // 👇 قمنا بإضافة loading هنا للتأكد من تحميل البيانات قبل عرض الصفحة
   const { familyMembers, currentProfile, switchProfile, loading } = useFamily();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
-    await signOut();
-    navigate('/login');
+    const loadingToast = toast.loading('جاري تسجيل الخروج...');
+    try {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+        
+        toast.success('تم تسجيل الخروج بنجاح', { id: loadingToast });
+        navigate('/login', { replace: true });
+    } catch (error: any) {
+        toast.error('حدث خطأ أثناء تسجيل الخروج', { id: loadingToast });
+    }
   };
 
-  // 👇 شاشة تحميل تظهر لحين جلب بيانات العميل (لتجنب الأخطاء)
   if (loading || !currentProfile) {
       return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-cream gap-4">
@@ -37,13 +43,11 @@ const ClientLayout: React.FC = () => {
     { name: 'أرشيف الرحلة', icon: History, path: '/dashboard/history' },
     { name: 'سجلات InBody', icon: FileText, path: '/dashboard/medical-records' },
     { name: 'الدعم الطبي', icon: MessageSquare, path: '/dashboard/support' },
-    // العناصر التي تظهر للحساب الرئيسي فقط
     ...(!isDependent ? [
         { name: 'الاشتراكات', icon: CreditCard, path: '/dashboard/subscriptions' },
         { name: 'إدارة العائلة', icon: Users, path: '/dashboard/family' },
         { name: 'الإعدادات', icon: Settings, path: '/dashboard/settings' },
     ] : [
-        // الحساب الفرعي يرى الإعدادات فقط (بدون دفع أو عائلة)
         { name: 'الإعدادات', icon: Settings, path: '/dashboard/settings' },
     ])
   ];
@@ -51,7 +55,6 @@ const ClientLayout: React.FC = () => {
   return (
     <div className="flex h-screen bg-cream font-sans overflow-hidden" dir="rtl">
       
-      {/* Sidebar */}
       <aside className={`
         fixed md:relative z-50 w-64 h-full bg-white border-l border-sage/30 flex flex-col transition-transform duration-300 ease-in-out
         ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}

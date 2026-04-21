@@ -17,7 +17,7 @@ interface Notification {
 }
 
 interface Props {
-    isAdmin?: boolean; // خاصية اختيارية عشان نستخدم نفس المكون للادمن والعميل
+    isAdmin?: boolean; 
 }
 
 const NotificationsMenu: React.FC<Props> = ({ isAdmin = false }) => {
@@ -39,13 +39,6 @@ const NotificationsMenu: React.FC<Props> = ({ isAdmin = false }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (user) {
-        fetchNotifications();
-        subscribeToNotifications();
-    }
-  }, [user]);
-
   const fetchNotifications = async () => {
     // جلب آخر 20 إشعار
     const { data } = await supabase
@@ -62,32 +55,40 @@ const NotificationsMenu: React.FC<Props> = ({ isAdmin = false }) => {
     }
   };
 
-  const subscribeToNotifications = () => {
-    const subscription = supabase
-      .channel('public:notifications')
-      .on('postgres_changes', 
-        { 
-            event: 'INSERT', 
-            schema: 'public', 
-            table: 'notifications', 
-            filter: `user_id=eq.${user?.id}` 
-        }, 
-        (payload) => {
-            const newNotif = payload.new as Notification;
-            setNotifications(prev => [newNotif, ...prev]);
-            setUnreadCount(prev => prev + 1);
-            
-            // تشغيل صوت تنبيه خفيف (اختياري)
-            const audio = new Audio('/notification.mp3'); // تأكد من وجود ملف صوتي أو احذف السطر
-            audio.play().catch(() => {});
-        }
-      )
-      .subscribe();
+  // 🔥 دمج الاستدعاء والاشتراك مع دالة التنظيف الصارمة (Cleanup)
+  useEffect(() => {
+    let subscription: ReturnType<typeof supabase.channel> | null = null;
+
+    if (user) {
+        fetchNotifications();
+
+        subscription = supabase
+          .channel(`public:notifications:${user.id}`)
+          .on('postgres_changes', 
+            { 
+                event: 'INSERT', 
+                schema: 'public', 
+                table: 'notifications', 
+                filter: `user_id=eq.${user.id}` 
+            }, 
+            (payload) => {
+                const newNotif = payload.new as Notification;
+                setNotifications(prev => [newNotif, ...prev]);
+                setUnreadCount(prev => prev + 1);
+                
+                const audio = new Audio('/notification.mp3'); 
+                audio.play().catch(() => {});
+            }
+          )
+          .subscribe();
+    }
 
     return () => {
-      supabase.removeChannel(subscription);
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
     };
-  };
+  }, [user]);
 
   const markAsRead = async (id: string, link?: string | null) => {
     // 1. تحديث الواجهة فوراً (Optimistic Update)
@@ -117,7 +118,7 @@ const NotificationsMenu: React.FC<Props> = ({ isAdmin = false }) => {
         .eq('is_read', false);
   };
 
-return (
+  return (
     <div className="relative" ref={menuRef}>
       <button 
         onClick={() => setIsOpen(!isOpen)} 
@@ -132,7 +133,6 @@ return (
       </button>
 
       {isOpen && (
-        // 👇👇 التعديل هنا: شيلنا md:right-0 وخليناها left-0 عشان تفتح مظبوط
         <div className="absolute top-full left-0 mt-2 w-80 md:w-96 bg-white rounded-2xl shadow-xl border border-gray-100 z-[100] overflow-hidden animate-in zoom-in-95 origin-top-left">
             
             {/* Header */}

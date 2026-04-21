@@ -34,12 +34,6 @@ const MedicalRecords: React.FC = () => {
     const [uploading, setUploading] = useState(false);
     const [analyzing, setAnalyzing] = useState(false);
 
-    const getGroqApiKey = async () => {
-        const { data, error } = await supabase.from('app_secrets').select('key_value').eq('key_name', 'GROQ_API_KEY').single();
-        if (error || !data) throw new Error("لم يتم العثور على مفتاح الذكاء الاصطناعي");
-        return data.key_value;
-    };
-
     useEffect(() => {
         if (currentProfile) {
             fetchInbody();
@@ -88,63 +82,61 @@ const MedicalRecords: React.FC = () => {
         });
     };
 
-    // 🔥 الدالة المحدثة لرفع صورة الـ InBody وتحليلها
-// 2. هذا هو التعديل في دالة handleAnalyzeImage
-const handleAnalyzeImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    const file = e.target.files[0];
+    // 🔥 دالة رفع صورة الـ InBody وتحليلها
+    const handleAnalyzeImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return;
+        const file = e.target.files[0];
 
-    setAnalyzing(true);
-    const loadingToast = toast.loading('جارٍ رفع ومعالجة ورقة الـ InBody...');
+        setAnalyzing(true);
+        const loadingToast = toast.loading('جارٍ رفع ومعالجة ورقة الـ InBody...');
 
-    try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${currentProfile!.id}-${Date.now()}.${fileExt}`;
-        const filePath = `inbody/${fileName}`;
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${currentProfile!.id}-${Date.now()}.${fileExt}`;
+            const filePath = `inbody/${fileName}`;
 
-        // رفع الصورة
-        const { error: uploadError } = await supabase.storage
-            .from('medical-docs')
-            .upload(filePath, file);
+            // 1. رفع الصورة
+            const { error: uploadError } = await supabase.storage
+                .from('medical-docs')
+                .upload(filePath, file);
 
-        if (uploadError) throw uploadError;
+            if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
-            .from('medical-docs')
-            .getPublicUrl(filePath);
+            // 2. حفظ المسار لتأمينه لاحقاً
+            setUploadedImageUrl(filePath);
+            
+            // 3. ضغط الصورة
+            const base64 = await compressImage(file);
 
-        setUploadedImageUrl(publicUrl);
+            // 4. استدعاء الـ Edge Function
+            const { data, error: functionError } = await supabase.functions.invoke('analyze-inbody', {
+                body: { base64 }
+            });
+            
+            if (functionError) {
+                throw new Error("فشل الاتصال بالخادم، يرجى المحاولة لاحقاً.");
+            }        
+            
+            const result = data.data; // النتائج من الـ Function
 
-        // ضغط الصورة
-        const base64 = await compressImage(file);
+            if (result) {
+                setWeight(result.weight?.toString() || '');
+                setMuscle(result.muscle?.toString() || '');
+                setFat(result.fat?.toString() || '');
+                setAiSummary(result.summary || '');
+                setShowInbodyForm(true);
+                toast.success("تم استخراج البيانات! راجعها واضغط حفظ", { id: loadingToast });
+            }
 
-        // استدعاء الـ Edge Function
-const { data, error: functionError } = await supabase.functions.invoke('analyze-inbody', {
-            body: { base64 }
-        });
-if (functionError) {
-             // لو الخطأ من الاتصال نفسه
-            throw new Error("فشل الاتصال بالخادم، يرجى المحاولة لاحقاً.");
-        }        
-        const result = data.data; // النتائج من الـ Function
-
-        if (result) {
-            setWeight(result.weight?.toString() || '');
-            setMuscle(result.muscle?.toString() || '');
-            setFat(result.fat?.toString() || '');
-            setAiSummary(result.summary || '');
-            setShowInbodyForm(true);
-            toast.success("تم استخراج البيانات! راجعها واضغط حفظ", { id: loadingToast });
+        } catch (err: any) {
+            toast.error("حدث خطأ: " + err.message, { id: loadingToast });
+        } finally {
+            setAnalyzing(false);
+            e.target.value = '';
         }
+    };
 
-    } catch (err: any) {
-        toast.error("حدث خطأ: " + err.message, { id: loadingToast });
-    } finally {
-        setAnalyzing(false);
-        e.target.value = '';
-    }
-};
-    // 🔥 الدالة المحدثة لحفظ الـ InBody برابط الصورة والتحليل
+    // 🔥 دالة حفظ الـ InBody برابط الصورة والتحليل
     const handleInbodySubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!currentProfile) return;
@@ -173,7 +165,7 @@ if (functionError) {
         }
     };
 
-    // 🔥 الدالة المحدثة لرفع التحاليل (Docs) لضمان تخزين الرابط الحقيقي للدكتور
+    // 🔥 دالة لرفع التحاليل (Docs) لضمان تخزين الرابط الحقيقي للدكتور
     const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0 || !currentProfile) return;
         setUploading(true);
@@ -190,16 +182,11 @@ if (functionError) {
 
             if (uploadError) throw uploadError;
 
-            // 2. جلب الرابط العام (Public URL)
-            const { data: { publicUrl } } = supabase.storage
-                .from('medical-docs')
-                .getPublicUrl(filePath);
-
-            // 3. حفظ البيانات في جدول client_documents مع الرابط (file_url)
+            // 2. حفظ مسار الملف (filePath) في الداتا بيز بدل الرابط المؤقت
             const { error: dbError } = await supabase.from('client_documents').insert({
                 user_id: currentProfile.id,
                 file_name: file.name,
-                file_url: publicUrl, // 👈 هذا هو السطر الذي يجعل الصورة تظهر عند الدكتور
+                file_url: filePath, 
                 file_type: 'general'
             });
 
@@ -211,6 +198,31 @@ if (functionError) {
             toast.error(err.message);
         } finally {
             setUploading(false);
+        }
+    };
+
+    // 🔥 دالة توليد الرابط الآمن عند الضغط على عرض المستند
+    const handleViewDocument = async (pathOrUrl: string) => {
+        const loadingToast = toast.loading('جاري تأمين الرابط...');
+        try {
+            // لو الرابط قديم وعام (بيبدأ بـ http)، افتحه فوراً
+            if (pathOrUrl.startsWith('http')) {
+                toast.dismiss(loadingToast);
+                window.open(pathOrUrl, '_blank');
+                return;
+            }
+
+            // لو مسار حديث، نولد له رابط مؤقت ومحمي صالح لمدة ساعة (3600 ثانية)
+            const { data, error } = await supabase.storage
+                .from('medical-docs')
+                .createSignedUrl(pathOrUrl, 3600);
+
+            if (error || !data) throw new Error("فشل في فتح الملف السري");
+
+            toast.dismiss(loadingToast);
+            window.open(data.signedUrl, '_blank');
+        } catch (err: any) {
+            toast.error(err.message, { id: loadingToast });
         }
     };
 
@@ -425,9 +437,9 @@ if (functionError) {
                                         <span className="text-xs text-gray-400">{new Date(doc.created_at).toLocaleDateString('ar-EG')}</span>
                                     </div>
                                 </div>
-                                <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-xs font-bold bg-gray-50 px-4 py-2 rounded-xl hover:bg-forest hover:text-white transition-colors">
+                                <button onClick={() => handleViewDocument(doc.file_url)} className="text-xs font-bold bg-gray-50 px-4 py-2 rounded-xl hover:bg-forest hover:text-white transition-colors">
                                     عرض
-                                </a>
+                                </button>
                             </div>
                         ))}
                     </div>

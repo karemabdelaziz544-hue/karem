@@ -58,7 +58,7 @@ const WriteArticle: React.FC = () => {
             {/* رفع الصورة */}
             <div onClick={() => fileInputRef.current?.click()} className="h-48 border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:border-orange hover:bg-orange/5 transition-all relative overflow-hidden">
                 {formData.image_url ? (
-                    <img src={formData.image_url} className="w-full h-full object-cover" alt="Preview" />
+                    <img src={formData.image_url} loading="lazy" className="w-full h-full object-cover" alt="Preview" />
                 ) : (
                     <><ImageIcon size={40} /><span className="font-bold mt-2">صورة الغلاف</span></>
                 )}

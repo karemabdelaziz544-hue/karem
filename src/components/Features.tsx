@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Target, Eye, Users, Star, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-// مخرن للأيقونات عشان نربط النص اللي في الداتابيز بالأيقونة الفعلية
 const iconMap: any = {
   Star: <Star size={32} />,
   Target: <Target size={32} />,
@@ -49,7 +48,6 @@ const Features: React.FC = () => {
               key={idx}
               title={card.title}
               description={card.desc}
-              // لو مفيش أيقونة محددة هنستخدم Star كافتراضي
               icon={iconMap[card.icon] || <Star size={32} />}
               image={card.image}
               className={
@@ -74,7 +72,13 @@ const FeatureCard: React.FC<any> = ({ title, description, icon, image, className
     className={`relative overflow-hidden rounded-[2.5rem] shadow-lg group h-[300px] flex flex-col justify-between p-8 text-right ${className}`}
   >
     <div className="absolute inset-0 z-0">
-      <img src={image} alt={title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+      <img 
+        src={image} 
+        alt={title} 
+        loading="lazy" // 👈 إضافة Lazy Load
+        width="400" height="300"
+        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+      />
       <div className="absolute inset-0 bg-gradient-to-t from-forest/90 via-forest/70 to-forest/40 transition-opacity duration-300 group-hover:opacity-95" />
     </div>
 

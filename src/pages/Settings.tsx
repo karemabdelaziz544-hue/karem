@@ -11,7 +11,6 @@ const Settings: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [profile, setProfile] = useState<Profile | null>(null);
 
-    // بيانات النموذج
     const [fullName, setFullName] = useState('');
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [newPassword, setNewPassword] = useState('');
@@ -27,13 +26,13 @@ const Settings: React.FC = () => {
         if (!user?.id) return;
         const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
         if (data) {
-            setProfile(data);
+            // 👇 التعديل هنا: إضافة as Profile
+            setProfile(data as Profile);
             setFullName(data.full_name || '');
             setAvatarUrl(data.avatar_url);
         }
     };
 
-    // 1. تحديث البيانات الشخصية والصورة
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -59,7 +58,6 @@ const Settings: React.FC = () => {
         }
     };
 
-    // 2. رفع الصورة
     const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         if (!event.target.files || event.target.files.length === 0) return;
         setLoading(true);
@@ -70,14 +68,12 @@ const Settings: React.FC = () => {
         const filePath = `${fileName}`;
 
         try {
-            // رفع الصورة
             const { error: uploadError } = await supabase.storage
                 .from('avatars')
                 .upload(filePath, file);
 
             if (uploadError) throw uploadError;
 
-            // الحصول على الرابط
             const { data: { publicUrl } } = supabase.storage
                 .from('avatars')
                 .getPublicUrl(filePath);
@@ -92,7 +88,6 @@ const Settings: React.FC = () => {
         }
     };
 
-    // 3. تغيير كلمة المرور
     const handleChangePassword = async () => {
         if (!newPassword) return;
         if (newPassword !== confirmPassword) return toast.error("كلمات المرور غير متطابقة");
@@ -116,7 +111,6 @@ const Settings: React.FC = () => {
         <div className="max-w-2xl mx-auto animate-in fade-in duration-500 pb-20">
             <h1 className="text-3xl font-extrabold text-forest mb-8">إعدادات الحساب</h1>
 
-            {/* قسم الصورة والاسم */}
             <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200 mb-8">
                 <div className="flex flex-col items-center mb-8">
                     <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
@@ -129,7 +123,6 @@ const Settings: React.FC = () => {
                                 </div>
                             )}
                         </div>
-                        {/* طبقة تظهر عند التحويم */}
                         <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                             <Camera className="text-white" size={32} />
                         </div>
@@ -166,7 +159,6 @@ const Settings: React.FC = () => {
                 </form>
             </div>
 
-            {/* قسم الأمان (كلمة المرور) */}
             <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200">
                 <h3 className="text-xl font-bold text-forest mb-6 flex items-center gap-2">
                     <Lock className="text-orange" /> الأمان وكلمة المرور

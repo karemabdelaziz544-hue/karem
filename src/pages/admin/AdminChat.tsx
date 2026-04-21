@@ -94,16 +94,24 @@ const fetchUsersList = async () => {
       console.error("Error fetching users:", error); 
     }
   };
+// استبدل الـ useEffect ده بالكامل
+
   useEffect(() => {
     fetchUsersList();
-    const subscription = supabase.channel('public:messages')
+    
+    // 🧹 ربط القناة باليوزر والتبويب عشان نقفلها لما نغير
+    const channelName = `admin_messages_${viewMode}_${Date.now()}`;
+    const subscription = supabase.channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
         fetchUsersList();
         if (selectedUser) fetchMessages(selectedUser.id);
       }).subscribe();
-    return () => { supabase.removeChannel(subscription); };
-  }, [selectedUser, viewMode]);
 
+    // 🧹 الإغلاق الفوري
+    return () => { 
+      supabase.removeChannel(subscription); 
+    };
+  }, [selectedUser?.id, viewMode]); // ضفنا الـ id عشان تتحدث صح
   const fetchMessages = async (userId: string) => {
     const { data } = await supabase.from('messages')
         .select('*')
@@ -206,7 +214,7 @@ const fetchUsersList = async () => {
 
   const renderAttachment = (msg: Message) => {
       if (!msg.attachment_url) return null;
-      if (msg.attachment_type === 'image') return <img src={msg.attachment_url} alt="attachment" className="rounded-lg max-w-full h-auto mt-2 border border-white/20" />;
+      if (msg.attachment_type === 'image') return <img src={msg.attachment_url} loading="lazy" alt="attachment" className="rounded-lg max-w-full h-auto mt-2 border border-white/20" />;
       else if (msg.attachment_type === 'audio') return <audio controls src={msg.attachment_url} className="mt-2 w-48 h-8" />;
       else return <a href={msg.attachment_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 mt-2 bg-black/10 p-2 rounded-lg text-xs hover:bg-black/20 transition-colors"><FileText size={16} /> فتح المرفق</a>;
   };

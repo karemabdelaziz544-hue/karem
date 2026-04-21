@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import toast from 'react-hot-toast'; // 👈 أضفنا التنبيهات
 import { 
     FileText, Activity, Scale, Dumbbell, 
     Droplet, Calendar, Eye, Loader2, Image as ImageIcon, ExternalLink 
@@ -12,7 +13,7 @@ interface Props {
 const DoctorMedicalView: React.FC<Props> = ({ targetUserId }) => {
   const [activeTab, setActiveTab] = useState<'inbody' | 'docs'>('inbody');
   const [inbodyRecords, setInbodyRecords] = useState<any[]>([]);
-  const [docs, setDocs] = useState<any[]>([]); // 👈 مصفوفة التحاليل
+  const [docs, setDocs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,14 +22,12 @@ const DoctorMedicalView: React.FC<Props> = ({ targetUserId }) => {
       setLoading(true);
       
       try {
-        // 1. جلب سجلات الـ InBody
         const { data: inbodyData } = await supabase
           .from('inbody_records')
           .select('*')
           .eq('user_id', targetUserId)
           .order('record_date', { ascending: false });
 
-        // 2. جلب سجلات التحاليل (Documents) - السطر ده هو اللي كان ناقص أو فيه مشكلة
         const { data: docsData } = await supabase
           .from('client_documents')
           .select('*')
@@ -36,7 +35,7 @@ const DoctorMedicalView: React.FC<Props> = ({ targetUserId }) => {
           .order('created_at', { ascending: false });
 
         setInbodyRecords(inbodyData || []);
-        setDocs(docsData || []); // 👈 تخزين التحاليل
+        setDocs(docsData || []); 
       } catch (error) {
         console.error("Error fetching patient data:", error);
       } finally {
@@ -46,6 +45,33 @@ const DoctorMedicalView: React.FC<Props> = ({ targetUserId }) => {
 
     fetchData();
   }, [targetUserId]);
+
+  // 🔥 الدالة الجديدة الخاصة بالدكتور لفك التشفير وتوليد الرابط الآمن
+  const handleViewFile = async (pathOrUrl: string) => {
+    if (!pathOrUrl) return;
+    
+    const loadingToast = toast.loading('جاري تأمين الرابط السري للملف...');
+    try {
+        // لو ملف قديم برابط عام، افتحه مباشرة
+        if (pathOrUrl.startsWith('http')) {
+            toast.dismiss(loadingToast);
+            window.open(pathOrUrl, '_blank');
+            return;
+        }
+
+        // توليد رابط مؤقت آمن صالح لمدة ساعة
+        const { data, error } = await supabase.storage
+            .from('medical-docs')
+            .createSignedUrl(pathOrUrl, 3600);
+
+        if (error || !data) throw new Error("لا يمكن الوصول للملف المحمي");
+
+        toast.dismiss(loadingToast);
+        window.open(data.signedUrl, '_blank');
+    } catch (err: any) {
+        toast.error(err.message, { id: loadingToast });
+    }
+  };
 
   if (loading) return <div className="p-20 text-center"><Loader2 className="animate-spin mx-auto text-forest" size={40} /></div>;
 
@@ -107,7 +133,8 @@ const DoctorMedicalView: React.FC<Props> = ({ targetUserId }) => {
 
                     {record.image_url && (
                       <button 
-                        onClick={() => window.open(record.image_url, '_blank')}
+                        // 👈 استخدام الدالة الجديدة لفتح صورة الـ InBody
+                        onClick={() => handleViewFile(record.image_url)}
                         className="flex items-center gap-2 bg-slate-800 text-white px-5 py-2.5 rounded-2xl text-xs font-black hover:bg-forest transition-all shadow-lg shadow-slate-200"
                       >
                         <ImageIcon size={16} /> عرض ورقة الـ InBody
@@ -127,12 +154,17 @@ const DoctorMedicalView: React.FC<Props> = ({ targetUserId }) => {
 
                     {record.image_url ? (
                       <div 
-                        onClick={() => window.open(record.image_url, '_blank')}
-                        className="relative group rounded-[1.5rem] overflow-hidden border border-slate-100 cursor-pointer h-40"
+                        // 👈 استخدام الدالة الجديدة عند الضغط على الصورة
+                        onClick={() => handleViewFile(record.image_url)}
+                        className="relative group rounded-[1.5rem] overflow-hidden border border-slate-100 cursor-pointer h-40 bg-slate-100 flex items-center justify-center"
                       >
-                         <img src={record.image_url} alt="InBody" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                         <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                            <div className="bg-white/90 p-3 rounded-full shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
+                         {/* لو المسار جديد (صورة مشفرة)، هنعرض أيقونة بدل الصورة الحقيقية عشان متظهرش في الـ Preview بشكل مباشر بدون إذن */}
+                         <div className="text-center group-hover:scale-105 transition-transform duration-500">
+                             <ImageIcon size={40} className="mx-auto text-slate-400 mb-2" />
+                             <span className="text-xs font-bold text-slate-500">ملف طبي مشفر - اضغط للفتح</span>
+                         </div>
+                         <div className="absolute inset-0 bg-black/5 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                            <div className="bg-white/90 p-3 rounded-full shadow-xl opacity-0 transform scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all">
                                <Eye size={24} className="text-slate-800" />
                             </div>
                          </div>
@@ -149,7 +181,7 @@ const DoctorMedicalView: React.FC<Props> = ({ targetUserId }) => {
           </div>
         </div>
       ) : (
-        /* 👈 قسم التحاليل (Docs) */
+        /* قسم التحاليل (Docs) */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4">
           {docs.length > 0 ? (
             docs.map(doc => (
@@ -168,8 +200,9 @@ const DoctorMedicalView: React.FC<Props> = ({ targetUserId }) => {
                 <div className="pt-2 border-t border-slate-50 flex justify-between items-center">
                     <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Medical Record</span>
                     <button 
-                      onClick={() => window.open(doc.file_url, '_blank')}
-                      className="text-[10px] font-black bg-forest/5 text-forest px-4 py-2 rounded-xl hover:bg-forest hover:text-white transition-all flex items-center gap-2"
+                      // 👈 استخدام الدالة الجديدة لفتح التحاليل الطبية
+                      onClick={() => handleViewFile(doc.file_url)}
+                      className="text-[10px] font-black bg-forest/5 text-forest px-4 py-2 rounded-xl hover:bg-forest hover:text-white transition-all flex items-center gap-2 cursor-pointer relative z-10"
                     >
                       <ExternalLink size={12} /> فتح المستند
                     </button>
@@ -188,7 +221,6 @@ const DoctorMedicalView: React.FC<Props> = ({ targetUserId }) => {
   );
 };
 
-// مكون مساعد للكروت العلوية
 const StatCard = ({ label, value, unit, icon, color }: { label: string; value: number | null; unit: string; icon: React.ReactNode; color: string }) => (
   <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex items-center justify-between">
     <div>
@@ -201,7 +233,6 @@ const StatCard = ({ label, value, unit, icon, color }: { label: string; value: n
   </div>
 );
 
-// 👈 مكون Wand2 المفقود في الـ imports بس موجود في كودك
 const Wand2 = ({ size }: { size?: number }) => (
     <svg width={size || 24} height={size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m2 22 5-5"/><path d="M9 15l-1-1 5-5 1 1-5 5z"/><path d="m19 9 1 1"/><path d="M15 5l1 1"/><path d="m19 2-1 1"/><path d="M22 5l-1-1"/><path d="m20 7-1 1"/></svg>
 );

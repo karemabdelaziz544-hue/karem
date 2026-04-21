@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { MessageCircle, ArrowLeft, Heart, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Button from './Button';
-import CountUp from './CountUp';
 
 const Hero: React.FC = () => {
   const [heroData, setHeroData] = useState<any>(null);
@@ -33,12 +32,10 @@ const Hero: React.FC = () => {
 
   return (
     <section className="relative pt-32 pb-20 px-6 md:px-12 min-h-screen flex items-center overflow-hidden bg-white">
-      {/* Background Blobs */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-sage/30 rounded-full blur-[100px] -z-10 animate-float" />
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-orange/10 rounded-full blur-[80px] -z-10 animate-float" style={{ animationDelay: '2s' }} />
 
       <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-        {/* Right: Content */}
         <motion.div
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
@@ -72,7 +69,6 @@ const Hero: React.FC = () => {
             {heroData?.description || "نقدّم أنظمة غذائية علاجية وتخصصية بإشراف دكاترة تغذية وأخصائيين."}
           </p>
 
-          {/* الأزرار الديناميكية */}
           <div className="flex flex-col sm:flex-row gap-4 pt-4 justify-end">
             {heroData?.primary_btn?.show && (
               <Button variant="primary" onClick={() => window.open(heroData.primary_btn.link, '_blank')}>
@@ -87,7 +83,6 @@ const Hero: React.FC = () => {
             )}
           </div>
 
-          {/* إحصائيات النجاح الديناميكية */}
           <div className="flex items-center justify-end gap-4 pt-8">
             <div className="text-sm font-bold text-forest text-right">
                {heroData?.success_label || "أكثر من"} <span className="text-orange text-lg">
@@ -100,6 +95,8 @@ const Hero: React.FC = () => {
                   key={i}
                   src={url}
                   alt="User"
+                  loading="lazy" // 👈 إضافة Lazy Load
+                  width="40" height="40"
                   className="w-10 h-10 rounded-full border-2 border-white object-cover shadow-sm bg-gray-100"
                 />
               ))}
@@ -107,7 +104,6 @@ const Hero: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Left: Visual */}
         <div className="relative h-[400px] md:h-[500px] flex items-center justify-center">
           <motion.div
             className="relative w-full h-full flex justify-center items-center"
@@ -118,8 +114,10 @@ const Hero: React.FC = () => {
             <div className="relative w-[90%] h-[90%] md:w-full md:h-full max-w-[500px] max-h-[500px]">
                 <div className="w-full h-full rounded-[60%_40%_30%_70%/60%_30%_70%_40%] overflow-hidden shadow-2xl border-[6px] border-white/50 animate-float z-10 relative bg-white">
                      <img 
-                       src={heroData?.image_url || "/family.jpg"} 
+                       src={heroData?.image_url || "/family.webp"} 
                        alt="عائلة هيليكس السعيدة" 
+                       loading="lazy" // 👈 إضافة Lazy Load
+                       width="500" height="500"
                        className="w-full h-full object-cover"
                     />
                 </div>

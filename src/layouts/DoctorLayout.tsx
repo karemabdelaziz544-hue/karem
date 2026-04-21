@@ -1,17 +1,36 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, ClipboardList, MessageSquare, Menu, X, LogOut } from 'lucide-react';const DoctorLayout: React.FC = () => {
+import { supabase } from '../lib/supabase'; // 👈 أضفنا استدعاء supabase
+import toast from 'react-hot-toast'; // 👈 أضفنا التنبيهات
+import { LayoutDashboard, Users, ClipboardList, MessageSquare, Menu, X, LogOut } from 'lucide-react';
+
+const DoctorLayout: React.FC = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // هنبدأ بـ "الرئيسية" فقط، وكل صفحة نخلصها هنضيف الزرار بتاعها هنا
-const menuItems = [
+  // 👇 التعديل هنا: دالة تسجيل خروج متكاملة للدكتور
+  const handleLogout = async () => {
+    const loadingToast = toast.loading('جاري تسجيل الخروج...');
+    try {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+        
+        toast.success('تم تسجيل الخروج بنجاح', { id: loadingToast });
+        navigate('/login', { replace: true });
+    } catch (error: any) {
+        toast.error('حدث خطأ أثناء تسجيل الخروج', { id: loadingToast });
+    }
+  };
+
+  const menuItems = [
     { label: 'الرئيسية', icon: <LayoutDashboard size={20} />, path: '/doctor-dashboard' },
     { label: 'أبطالي', icon: <Users size={20} />, path: '/doctor-dashboard/clients' },
     { label: 'المتابعة اليومية', icon: <ClipboardList size={20} />, path: '/doctor-dashboard/performance' },
     { label: 'المحادثات', icon: <MessageSquare size={20} />, path: '/doctor-dashboard/chat' },
-  ];  return (
+  ];  
+
+  return (
     <div className="flex h-screen bg-gray-50 font-tajawal text-right" dir="rtl">
       
       {/* Sidebar - القائمة الجانبية */}
@@ -41,7 +60,10 @@ const menuItems = [
           </nav>
 
           <div className="pt-6 border-t border-slate-800">
-            <button className="w-full flex items-center gap-4 px-4 py-3 text-rose-400 hover:bg-rose-500/10 rounded-xl font-bold transition-all">
+            <button 
+              onClick={handleLogout}
+              className="w-full flex items-center gap-4 px-4 py-3 text-rose-400 hover:bg-rose-500/10 rounded-xl font-bold transition-all"
+            >
               <LogOut size={20} />
               <span>خروج</span>
             </button>

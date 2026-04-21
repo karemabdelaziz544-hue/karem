@@ -172,7 +172,7 @@ const AdminOverview: React.FC = () => {
               expiringSoon.map((client) => (
                 <div key={client.id} className="p-3 rounded-2xl bg-red-50 border border-red-100 flex items-center gap-3 group">
                   <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 border border-red-200">
-                    {client.avatar_url ? <img src={client.avatar_url} className="w-full h-full object-cover rounded-full" /> : <Users size={16} className="text-red-300" />}
+                    {client.avatar_url ? <img src={client.avatar_url} loading="lazy" className="w-full h-full object-cover rounded-full" /> : <Users size={16} className="text-red-300" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold text-slate-800 truncate">{client.full_name}</p>

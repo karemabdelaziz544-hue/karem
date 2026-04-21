@@ -44,7 +44,7 @@ const ManageBlog: React.FC = () => {
         {articles.map(article => (
             <div key={article.id} className="bg-white p-4 rounded-xl border border-gray-200 flex items-center justify-between shadow-sm">
                 <div className="flex items-center gap-4">
-                    <img src={article.image_url || 'https://placehold.co/100'} className="w-16 h-16 rounded-lg object-cover" alt="img" />
+                    <img src={article.image_url || 'https://placehold.co/100'}loading="lazy" className="w-16 h-16 rounded-lg object-cover" alt="img" />
                     <div>
                         <h3 className="font-bold text-forest">{article.title}</h3>
                         <p className="text-xs text-gray-400">{new Date(article.created_at).toLocaleDateString('ar-EG')}</p>

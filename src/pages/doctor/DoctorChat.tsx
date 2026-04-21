@@ -104,18 +104,20 @@ const DoctorChat: React.FC = () => {
   };
 
   // 4. الـ Real-time (السر هنا)
+// استبدل الـ useEffect رقم 4 الخاص بالـ Real-time بهذا الكود
+
+  // 4. الـ Real-time (إصلاح تسريب الذاكرة)
   useEffect(() => {
-    // If no client is selected, or no user, clear messages and exit.
     if (!selectedClient?.id || !user?.id) {
       setMessages([]);
       return;
     }
 
     let isMounted = true;
+    let channel: ReturnType<typeof supabase.channel> | null = null; // 🧹 مرجع للقناة
 
-    // 1. Fetch initial messages for the selected client
     const fetchInitialMessages = async () => {
-      setMessages([]); // Clear old messages immediately
+      setMessages([]);
       const { data, error } = await supabase
         .from('messages')
         .select('*')
@@ -135,41 +137,40 @@ const DoctorChat: React.FC = () => {
     fetchInitialMessages();
     markAsRead(selectedClient.id);
 
-    // 2. Subscribe to realtime updates for new messages
-    const channel = supabase.channel(`doc_realtime_${selectedClient.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload) => {
+    // 🧹 إنشاء قناة اتصال باسم فريد للعميل ده بالذات عشان نسمع رسايله هو بس!
+    channel = supabase.channel(`doc_realtime_${selectedClient.id}_${Date.now()}`)
+      .on('postgres_changes', 
+          { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'messages',
+            // 🧹 الأهم: فلتر الـ Realtime عشان متجيش رسايل من عملاء تانيين وتعمل Load
+            filter: `or(and(sender_id.eq.${selectedClient.id},receiver_id.eq.${user.id}),and(sender_id.eq.${user.id},receiver_id.eq.${selectedClient.id}))`
+          }, 
+          async (payload) => {
         const newMsg = payload.new as Message;
-        
-        if (newMsg.recipient_type === 'doctor') {
-            const isForCurrentChat = (newMsg.sender_id === selectedClient.id && newMsg.receiver_id === user.id) || 
-                                     (newMsg.receiver_id === selectedClient.id && newMsg.sender_id === user.id);
 
-            if (isForCurrentChat) {
-                setMessages(prev => [...prev, newMsg]);
-                if (newMsg.sender_id === selectedClient.id) {
-                    markAsRead(selectedClient.id);
-                }
+        if (newMsg.recipient_type === 'doctor') {
+            setMessages(prev => [...prev, newMsg]);
+            
+            if (newMsg.sender_id === selectedClient.id) {
+                markAsRead(selectedClient.id);
             }
 
             if (newMsg.sender_id !== user.id) {
                 await supabase.from('profiles').update({ chat_status_with_doctor: 'active' }).eq('id', newMsg.sender_id);
-                // Calling fetchClients() on every message is very inefficient and can cause race conditions.
-                // Instead, we'll update the client list in-place.
                 setClients(prevClients => {
                   const clientIndex = prevClients.findIndex(c => c.id === newMsg.sender_id);
-                  
-                  // If client is not in the current list (e.g. was archived), a refetch is the simplest way.
                   if (clientIndex === -1) {
                     fetchClients();
                     return prevClients;
                   }
-
                   const newClients = [...prevClients];
                   newClients[clientIndex] = {
                       ...newClients[clientIndex],
                       last_message_text: newMsg.content,
                       last_message_at: newMsg.created_at,
-                      unread_count: isForCurrentChat ? 0 : (newClients[clientIndex].unread_count || 0) + 1,
+                      unread_count: 0, // إحنا فاتحين الشات ده فخلاص مقرية
                       chat_status_with_doctor: 'active'
                   };
                   return newClients.sort((a, b) => (b.unread_count - a.unread_count) || (new Date(b.last_message_at || 0).getTime() - new Date(a.last_message_at || 0).getTime()));
@@ -183,13 +184,14 @@ const DoctorChat: React.FC = () => {
       })
       .subscribe();
 
-    // 3. Cleanup subscription
+    // 🧹 دالة التنظيف الصارمة
     return () => {
       isMounted = false;
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [selectedClient?.id, user?.id, fetchClients]);
-
   // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
@@ -296,7 +298,7 @@ const DoctorChat: React.FC = () => {
 
 const ChatAvatar = ({ src, name, size }: { src?: string | null; name?: string | null; size: 'sm' | 'md' }) => (
     <div className={`${size === 'md' ? 'w-14 h-14' : 'w-12 h-12'} rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center border-2 border-white shadow-sm`}>
-        {src ? <img src={src} className="w-full h-full object-cover" /> : <span className="text-slate-400 font-black">{name?.[0] ?? '?'}</span>}
+        {src ? <img src={src} loading="lazy" className="w-full h-full object-cover" /> : <span className="text-slate-400 font-black">{name?.[0] ?? '?'}</span>}
     </div>
 );
 

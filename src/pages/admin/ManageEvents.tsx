@@ -138,7 +138,7 @@ const ManageEvents: React.FC = () => {
           <div key={event.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden group">
             <div className="h-48 bg-gray-100 relative">
               {event.image_url ? (
-                <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />
+                <img src={event.image_url} loading="lazy" alt={event.title} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400"><ImageIcon size={40}/></div>
               )}
@@ -186,7 +186,7 @@ const ManageEvents: React.FC = () => {
                 className="h-40 border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:border-orange hover:text-orange hover:bg-orange/5 transition-all relative overflow-hidden"
               >
                 {formData.image_url ? (
-                  <img src={formData.image_url} className="w-full h-full object-cover" alt="Preview" />
+                  <img src={formData.image_url} loading="lazy" className="w-full h-full object-cover" alt="Preview" />
                 ) : (
                   <>
                     {uploading ? <Loader2 className="animate-spin" /> : <ImageIcon size={32} />}
