@@ -9,8 +9,8 @@ type PlanType = 'individual' | 'family_small' | 'family_large';
 
 const PLANS = {
   individual: { name: 'باقة فردية', price: 500, capacity: 0 },
-  family_small: { name: 'عائلي (فردين)', price: 900, capacity: 1 }, // 1 sub-account
-  family_large: { name: 'عائلي (4 أفراد)', price: 1600, capacity: 3 } // 3 sub-accounts
+  family_small: { name: 'عائلي (فردين)', price: 900, capacity: 1 }, 
+  family_large: { name: 'عائلي (4 أفراد)', price: 1600, capacity: 3 } 
 };
 
 const RenewSubscriptionModal: React.FC<{ onClose: () => void; currentPlan: string }> = ({ onClose }) => {
@@ -21,19 +21,16 @@ const RenewSubscriptionModal: React.FC<{ onClose: () => void; currentPlan: strin
   const [selectedMembersToKeep, setSelectedMembersToKeep] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // الفلاتر لاستبعاد المدير نفسه من الحسابات الفرعية
   const subMembers = familyMembers.filter(m => m.manager_id === currentProfile?.id);
 
   const handlePlanSelect = (plan: PlanType) => {
     setSelectedPlan(plan);
-    // لو الباقة الجديدة بتشيل عدد أقل من اللي عندي، لازم أختار
     const newCapacity = PLANS[plan].capacity;
     if (subMembers.length > newCapacity) {
-      setStep(2); // روح لخطوة الاختيار
-      setSelectedMembersToKeep([]); // تصفير الاختيارات
+      setStep(2); 
+      setSelectedMembersToKeep([]); 
     } else {
-      setStep(3); // روح للدفع علطول
-      // لو الباقة بتشيلهم كلهم، نختارهم كلهم تلقائي
+      setStep(3); 
       setSelectedMembersToKeep(subMembers.map(m => m.id));
     }
   };
@@ -58,26 +55,21 @@ const RenewSubscriptionModal: React.FC<{ onClose: () => void; currentPlan: strin
     setLoading(true);
 
     try {
-      // 1. رفع الصورة
       const fileExt = receipt.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const { error: uploadError, data: uploadData } = await supabase.storage
-        .from('receipts') // تأكد إن البوكت ده موجود
-        .upload(fileName, receipt);
+      const fileName = `renew_${currentProfile.id}_${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage.from('receipts').upload(fileName, receipt);
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage.from('receipts').getPublicUrl(fileName);
-
-      // 2. إنشاء طلب الدفع مع الميتاداتا
+      // 👈 التعديل هنا: استخدام fileName كمسار آمن بدلاً من الرابط العام
       const { error } = await supabase.from('payment_requests').insert([{
         user_id: currentProfile.id,
         amount: PLANS[selectedPlan].price,
         plan_type: selectedPlan,
         status: 'pending',
-        receipt_url: urlData.publicUrl,
+        receipt_url: fileName, // 👈 التعديل
         renewal_metadata: {
-          keep_member_ids: selectedMembersToKeep // 👈 هنا بنقول للسيرفر مين يفضل عايش
+          keep_member_ids: selectedMembersToKeep
         }
       }]);
 
@@ -99,7 +91,6 @@ const RenewSubscriptionModal: React.FC<{ onClose: () => void; currentPlan: strin
         
         <h2 className="text-2xl font-black text-gray-800 mb-2">تجديد الاشتراك 🔄</h2>
         
-        {/* Step 1: Choose Plan */}
         {step === 1 && (
           <div className="space-y-4 mt-6">
             <p className="text-gray-500 mb-4">اختر الباقة التي تريد التجديد عليها:</p>
@@ -121,7 +112,6 @@ const RenewSubscriptionModal: React.FC<{ onClose: () => void; currentPlan: strin
           </div>
         )}
 
-        {/* Step 2: Downgrade Logic (Who to keep?) */}
         {step === 2 && selectedPlan && (
           <div className="space-y-6 mt-6">
             <div className="bg-orange/10 p-4 rounded-xl border border-orange/20 flex gap-3">
@@ -163,7 +153,7 @@ const RenewSubscriptionModal: React.FC<{ onClose: () => void; currentPlan: strin
                <button onClick={() => setStep(1)} className="text-gray-500 font-bold text-sm">رجوع</button>
                <Button 
                  onClick={() => setStep(3)} 
-                 disabled={selectedMembersToKeep.length === 0 && PLANS[selectedPlan].capacity > 0} // لازم يختار لو الباقة تسمح
+                 disabled={selectedMembersToKeep.length === 0 && PLANS[selectedPlan].capacity > 0} 
                >
                  متابعة للدفع
                </Button>
@@ -171,7 +161,6 @@ const RenewSubscriptionModal: React.FC<{ onClose: () => void; currentPlan: strin
           </div>
         )}
 
-        {/* Step 3: Payment Upload */}
         {step === 3 && selectedPlan && (
            <div className="space-y-6 mt-6">
               <div className="bg-gray-50 p-4 rounded-xl text-center">

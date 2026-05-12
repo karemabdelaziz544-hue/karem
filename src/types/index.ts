@@ -27,6 +27,10 @@ export type Testimonial = Tables<'testimonials'>;
 export type Transaction = Tables<'transactions'>;
 export type PromoCode = Tables<'promo_codes'>;
 
+// 👇 الأنواع الجديدة التي تمت إضافتها 👇
+export type HealthProfile = Tables<'health_profile'>;
+export type LifestyleProfile = Tables<'lifestyle_profile'>;
+
 // ─── أنواع الإدراج (Insert Types) ────────────────────────
 export type PlanTaskInsert = TablesInsert<'plan_tasks'>;
 export type MessageInsert = TablesInsert<'messages'>;

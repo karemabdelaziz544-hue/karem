@@ -4,15 +4,19 @@ import { Ticket, Plus, Trash2, Save, X, Loader2, Tag } from 'lucide-react';
 import Button from '../../components/Button';
 import Input from '../../components/Input';
 import toast from 'react-hot-toast';
+import ConfirmModal from '../../components/ConfirmModal'; // 👈 استيراد المودال
 
 const ManagePromoCodes: React.FC = () => {
   const [codes, setCodes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   
+  // حالة المودال
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
   // Form Data
   const [newCode, setNewCode] = useState('');
-  const [discount, setDiscount] = useState(10); // الافتراضي 10%
+  const [discount, setDiscount] = useState(10);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -30,7 +34,7 @@ const ManagePromoCodes: React.FC = () => {
     setCreating(true);
     try {
         const { error } = await supabase.from('promo_codes').insert([{
-            code: newCode.toUpperCase().trim(), // دايما حروف كبيرة
+            code: newCode.toUpperCase().trim(),
             discount_percent: discount
         }]);
 
@@ -48,16 +52,16 @@ const ManagePromoCodes: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if(!window.confirm("حذف هذا الكود نهائياً؟")) return;
+  // 👈 دالة الحذف تم تعديلها لتستقبل الـ ID من المودال
+  const executeDelete = async (id: string) => {
     await supabase.from('promo_codes').delete().eq('id', id);
     setCodes(prev => prev.filter(c => c.id !== id));
-    toast.success("تم الحذف");
+    toast.success("تم الحذف بنجاح");
   };
 
   const toggleStatus = async (id: string, currentStatus: boolean) => {
       await supabase.from('promo_codes').update({ is_active: !currentStatus }).eq('id', id);
-      fetchCodes(); // تحديث عشان نشوف الحالة الجديدة
+      fetchCodes();
   };
 
   return (
@@ -115,13 +119,23 @@ const ManagePromoCodes: React.FC = () => {
                         >
                             {code.is_active ? 'تعطيل' : 'تفعيل'}
                         </button>
-                        <button onClick={() => handleDelete(code.id)} className="text-gray-400 hover:text-red-500"><Trash2 size={18}/></button>
+                        {/* 👈 التعديل هنا: فتح المودال بدلاً من window.confirm */}
+                        <button onClick={() => setDeleteId(code.id)} className="text-gray-400 hover:text-red-500"><Trash2 size={18}/></button>
                     </div>
                 </div>
             </div>
         ))}
         {codes.length === 0 && !loading && <p className="text-gray-400 col-span-full text-center py-10">لا توجد أكواد خصم حالياً.</p>}
       </div>
+
+      {/* 👈 المودال */}
+      <ConfirmModal 
+         isOpen={!!deleteId}
+         title="تأكيد الحذف"
+         message="هل أنت متأكد من رغبتك في حذف كود الخصم نهائياً؟"
+         onCancel={() => setDeleteId(null)}
+         onConfirm={() => { if (deleteId) executeDelete(deleteId); }}
+      />
     </div>
   );
 };

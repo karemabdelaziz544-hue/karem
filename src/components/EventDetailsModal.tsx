@@ -16,8 +16,6 @@ const EventDetailsModal: React.FC<EventModalProps> = ({ event, isOpen, onClose }
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [isBooked, setIsBooked] = useState(false);
-  
-  // 👇 حالة التحقق من السعة
   const [currentCount, setCurrentCount] = useState(0);
   const [checking, setChecking] = useState(true);
 
@@ -28,19 +26,17 @@ const EventDetailsModal: React.FC<EventModalProps> = ({ event, isOpen, onClose }
     }
   }, [isOpen, event, user]);
 
-  // التحقق من السعة
   const checkCapacity = async () => {
       const { count } = await supabase
         .from('event_bookings')
         .select('*', { count: 'exact', head: true })
         .eq('event_id', event.id)
-        .neq('status', 'rejected'); // المرفوض لا يحسب من العدد
+        .neq('status', 'rejected'); 
       
       setCurrentCount(count || 0);
       setChecking(false);
   };
 
-  // التحقق هل المستخدم حجز بالفعل؟
   const checkUserBooking = async () => {
       const { data } = await supabase.from('event_bookings').select('id').eq('event_id', event.id).eq('user_id', user!.id).single();
       if (data) setIsBooked(true);
@@ -56,18 +52,18 @@ const EventDetailsModal: React.FC<EventModalProps> = ({ event, isOpen, onClose }
     const filePath = `booking-${user?.id}-${Date.now()}.${file.name.split('.').pop()}`;
 
     try {
-        let proofUrl = null;
+        let proofPath = null;
         if (event.price > 0) {
             const { error: uploadError } = await supabase.storage.from('payment-receipts').upload(filePath, file);
             if (uploadError) throw uploadError;
-            const { data } = supabase.storage.from('payment-receipts').getPublicUrl(filePath);
-            proofUrl = data.publicUrl;
+            // 👈 التعديل هنا: نحفظ المسار فقط بدون getPublicUrl
+            proofPath = filePath;
         }
 
         const { error } = await supabase.from('event_bookings').insert([{
             event_id: event.id,
             user_id: user?.id ?? '',
-            payment_proof: proofUrl,
+            payment_proof: proofPath,
             status: (event.price ?? 0) > 0 ? 'pending' : 'confirmed'
         }]);
 
@@ -81,13 +77,12 @@ const EventDetailsModal: React.FC<EventModalProps> = ({ event, isOpen, onClose }
             type: 'system',
             title: 'حجز ايفينت جديد 🎫',
             message: `قام مستخدم بحجز مقعد في: ${event.title}`,
-            link: '/admin/events', // أو '/admin/event-bookings' لما نربطها
+            link: '/admin/events', 
             user_id: user?.id
         }]);
 
         toast.success(event.price > 0 ? "تم إرسال طلب الحجز للمراجعة" : "تم تأكيد حجزك بنجاح!");
         setIsBooked(true);
-        // تحديث العدد محلياً عشان يظهر التأثير فوراً
         setCurrentCount(prev => prev + 1);
 
     } catch (err: unknown) {
@@ -103,13 +98,10 @@ const EventDetailsModal: React.FC<EventModalProps> = ({ event, isOpen, onClose }
   return (
     <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
       <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]">
-        
-        {/* زر الإغلاق */}
         <button onClick={onClose} className="absolute top-4 left-4 z-10 bg-white/20 hover:bg-white/40 p-2 rounded-full text-white backdrop-blur-md transition-all">
             <X size={24} />
         </button>
 
-        {/* صورة الغلاف */}
         <div className="h-48 md:h-64 relative bg-gray-200 shrink-0">
             <img 
                 src={event.image_url || 'https://images.unsplash.com/photo-1544367563-12123d8959bd'} 
@@ -126,7 +118,6 @@ const EventDetailsModal: React.FC<EventModalProps> = ({ event, isOpen, onClose }
             </div>
         </div>
 
-        {/* المحتوى Scrollable */}
         <div className="p-6 overflow-y-auto">
             <div className="flex items-center justify-between mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
                 <div>
@@ -143,13 +134,12 @@ const EventDetailsModal: React.FC<EventModalProps> = ({ event, isOpen, onClose }
                 {event.description || "لا توجد تفاصيل إضافية."}
             </p>
 
-            {/* منطقة الحجز والتحقق */}
             <div className="border-t border-gray-100 pt-6">
                 {checking ? (
                     <div className="text-center text-gray-400 text-sm font-bold flex items-center justify-center gap-2">
                         <Loader2 className="animate-spin" size={16} /> جاري التحقق من المقاعد...
                     </div>
-                ) : isSoldOut && !isBooked ? ( // لو مليان وأنت مش حاجز
+                ) : isSoldOut && !isBooked ? (
                     <div className="bg-red-50 text-red-700 p-4 rounded-xl text-center font-bold border border-red-100 flex flex-col items-center">
                         <span className="text-2xl mb-1">🚫</span>
                         <span>نعتذر، العدد مكتمل لهذا الحدث (Sold Out)</span>
@@ -166,7 +156,6 @@ const EventDetailsModal: React.FC<EventModalProps> = ({ event, isOpen, onClose }
                         تم تسجيل طلبك بنجاح!
                     </div>
                 ) : (
-                    /* حالة الحجز المتاح */
                     <>
                         {event.price > 0 ? (
                             <div className="space-y-4">

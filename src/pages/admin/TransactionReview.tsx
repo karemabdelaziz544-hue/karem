@@ -125,7 +125,24 @@ const AdminPayments: React.FC = () => {
   const filteredRequests = requests.filter(r => 
     activeTab === 'pending' ? r.status === 'pending' : r.status !== 'pending'
   );
-
+const handleViewReceipt = async (pathOrUrl: string) => {
+    if (!pathOrUrl) return;
+    const loadingToast = toast.loading('جاري تحميل الإيصال...');
+    try {
+        if (pathOrUrl.startsWith('http')) {
+            toast.dismiss(loadingToast);
+            window.open(pathOrUrl, '_blank');
+            return;
+        }
+        const { data, error } = await supabase.storage.from('receipts').createSignedUrl(pathOrUrl, 60);
+        if (error || !data) throw new Error("لا يمكن الوصول للملف");
+        
+        toast.dismiss(loadingToast);
+        window.open(data.signedUrl, '_blank');
+    } catch (err: any) {
+        toast.error(err.message, { id: loadingToast });
+    }
+  };
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6" dir="rtl">
       
@@ -206,9 +223,9 @@ const AdminPayments: React.FC = () => {
                       <span className="font-black text-slate-800">{req.amount}</span> <span className="text-[10px] text-gray-400">EGP</span>
                     </td>
                     <td className="p-4">
-                      <a href={req.receipt_url ?? '#'} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:underline">
-                        <Eye size={14}/> عرض الإيصال
-                      </a>
+                      <button onClick={() => handleViewReceipt(req.receipt_url!)} className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:underline">
+  <Eye size={14}/> عرض الإيصال
+</button>
                     </td>
                     <td className="p-4 text-[10px] text-gray-500 font-bold">
                       <div className="flex items-center gap-1"><Calendar size={12}/> {req.created_at ? format(new Date(req.created_at), 'dd/MM/yyyy') : '-'}</div>

@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { 
   Send, Search, MessageSquare, Check, CheckCircle, Info, X, Crown, Baby, 
   Link as LinkIcon, ExternalLink, Paperclip, Mic, StopCircle, FileText, 
-  Image as ImageIcon, Loader2, Headset, Stethoscope 
+  Image as ImageIcon, Loader2, Headset, Stethoscope, ShieldCheck 
 } from 'lucide-react';
 import Avatar from '../../components/Avatar';
 import { format } from 'date-fns';
@@ -22,7 +22,7 @@ type ChatUser = Profile & {
 
 const AdminChat: React.FC = () => {
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState<'admin' | 'doctor'>('admin'); // التبويب الحالي
+  const [viewMode, setViewMode] = useState<'admin' | 'doctor'>('admin');
   const [users, setUsers] = useState<ChatUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<ChatUser | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -30,7 +30,6 @@ const AdminChat: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showProfile, setShowProfile] = useState(false);
   
-  // Media & Upload States
   const [attachment, setAttachment] = useState<File | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -40,13 +39,11 @@ const AdminChat: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-const fetchUsersList = async () => {
+  const fetchUsersList = async () => {
     try {
-      // 1. جلب البروفايلات (كل المستخدمين)
       const { data: profiles, error: profilesError } = await supabase.from('profiles').select('*').neq('role', 'admin');
       if (profilesError || !profiles) return;
 
-      // 2. جلب الرسائل حسب التبويب المختار
       const { data: allMessages } = await supabase
         .from('messages')
         .select('sender_id, receiver_id, content, created_at, is_read, attachment_type, recipient_type')
@@ -54,15 +51,10 @@ const fetchUsersList = async () => {
         .order('created_at', { ascending: false });
 
       const safeMessages = allMessages || [];
-      const profilesMap = new Map(profiles.map(p => [p.id, p]));
 
-      // 3. فلترة وتجهيز القائمة
       const usersWithStats = profiles
         .filter(profile => {
-          // في وضع الإدارة: اظهر كل العملاء (role === client)
           if (viewMode === 'admin') return profile.role === 'client';
-          
-          // في وضع متابعة الدكاترة: اظهر فقط العملاء اللي ليهم رسايل (مش الدكتور نفسه)
           const hasMessagesAsClient = safeMessages.some(m => 
             (m.sender_id === profile.id || m.receiver_id === profile.id) && profile.role === 'client'
           );
@@ -82,7 +74,6 @@ const fetchUsersList = async () => {
           };
         });
 
-      // ترتيب حسب الرسايل الجديدة
       const sortedUsers = usersWithStats.sort((a, b) => {
         const timeA = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
         const timeB = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
@@ -94,12 +85,10 @@ const fetchUsersList = async () => {
       console.error("Error fetching users:", error); 
     }
   };
-// استبدل الـ useEffect ده بالكامل
 
   useEffect(() => {
     fetchUsersList();
     
-    // 🧹 ربط القناة باليوزر والتبويب عشان نقفلها لما نغير
     const channelName = `admin_messages_${viewMode}_${Date.now()}`;
     const subscription = supabase.channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
@@ -107,15 +96,15 @@ const fetchUsersList = async () => {
         if (selectedUser) fetchMessages(selectedUser.id);
       }).subscribe();
 
-    // 🧹 الإغلاق الفوري
     return () => { 
       supabase.removeChannel(subscription); 
     };
-  }, [selectedUser?.id, viewMode]); // ضفنا الـ id عشان تتحدث صح
+  }, [selectedUser?.id, viewMode]);
+
   const fetchMessages = async (userId: string) => {
     const { data } = await supabase.from('messages')
         .select('*')
-        .eq('recipient_type', viewMode) // فلترة الرسائل داخل الشات حسب التبويب
+        .eq('recipient_type', viewMode)
         .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
         .order('created_at', { ascending: true });
     setMessages(data || []);
@@ -168,29 +157,33 @@ const fetchUsersList = async () => {
     if ((!newMessage.trim() && !attachment) || !selectedUser) return;
 
     setUploading(true);
-    let attachmentUrl = null;
+    let attachmentPath = null;
     let attachmentType = null;
 
     try {
+      const { data: userData } = await supabase.auth.getUser();
+      const currentUserId = userData.user?.id ?? '';
+
       if (attachment) {
           const fileExt = attachment.name.split('.').pop();
-          const fileName = `${Date.now()}.${fileExt}`;
-          const { error: uploadError } = await supabase.storage.from('chat-attachments').upload(fileName, attachment);
+          // حفظ المسار فقط بدون getPublicUrl
+          const filePath = `admin_${currentUserId}/${Date.now()}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage.from('chat-attachments').upload(filePath, attachment);
           if (uploadError) throw uploadError;
-          const { data } = supabase.storage.from('chat-attachments').getPublicUrl(fileName);
-          attachmentUrl = data.publicUrl;
+          
+          attachmentPath = filePath;
           if (attachment.type.startsWith('image/')) attachmentType = 'image';
           else if (attachment.type.startsWith('audio/')) attachmentType = 'audio';
           else attachmentType = 'file';
       }
 
       const { error } = await supabase.from('messages').insert([{
-        sender_id: (await supabase.auth.getUser()).data.user?.id ?? '',
+        sender_id: currentUserId,
         receiver_id: selectedUser.id,
         content: attachmentType === 'audio' ? '🎤 رسالة صوتية' : (newMessage || (attachmentType === 'image' ? '📷 صورة' : '📎 ملف')),
-        attachment_url: attachmentUrl,
+        attachment_url: attachmentPath, // حفظ المسار
         attachment_type: attachmentType,
-        recipient_type: viewMode, // الإرسال بنوع التبويب الحالي
+        recipient_type: viewMode,
         is_read: false
       }]);
 
@@ -203,6 +196,26 @@ const fetchUsersList = async () => {
     } finally { setUploading(false); }
   };
 
+  // 🔥 دالة توليد الرابط الآمن
+  const handleViewAttachment = async (pathOrUrl: string) => {
+    if (!pathOrUrl) return;
+    const loadingToast = toast.loading('جاري تحميل المرفق...');
+    try {
+        if (pathOrUrl.startsWith('http')) {
+            toast.dismiss(loadingToast);
+            window.open(pathOrUrl, '_blank');
+            return;
+        }
+        const { data, error } = await supabase.storage.from('chat-attachments').createSignedUrl(pathOrUrl, 3600);
+        if (error || !data) throw new Error("لا يمكن الوصول للملف المحمي");
+        
+        toast.dismiss(loadingToast);
+        window.open(data.signedUrl, '_blank');
+    } catch (err: any) {
+        toast.error(err.message, { id: loadingToast });
+    }
+  };
+
   const scrollToBottom = () => {
     setTimeout(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, 100);
   };
@@ -212,17 +225,9 @@ const fetchUsersList = async () => {
     (u.phone && u.phone.includes(searchQuery))
   );
 
-  const renderAttachment = (msg: Message) => {
-      if (!msg.attachment_url) return null;
-      if (msg.attachment_type === 'image') return <img src={msg.attachment_url} loading="lazy" alt="attachment" className="rounded-lg max-w-full h-auto mt-2 border border-white/20" />;
-      else if (msg.attachment_type === 'audio') return <audio controls src={msg.attachment_url} className="mt-2 w-48 h-8" />;
-      else return <a href={msg.attachment_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 mt-2 bg-black/10 p-2 rounded-lg text-xs hover:bg-black/20 transition-colors"><FileText size={16} /> فتح المرفق</a>;
-  };
-
   return (
     <div className="flex flex-col h-[calc(100vh-100px)] font-tajawal">
       
-      {/* تبويبات الفلترة للإدمن */}
       <div className="flex gap-4 p-4 bg-white border-b border-gray-100">
         <button 
           onClick={() => { setViewMode('admin'); setSelectedUser(null); }}
@@ -240,7 +245,6 @@ const fetchUsersList = async () => {
 
       <div className="flex-1 bg-white rounded-b-3xl border-x border-b border-gray-200 shadow-sm overflow-hidden flex flex-col md:flex-row animate-in fade-in">
         
-        {/* Sidebar List */}
         <div className={`w-full md:w-80 border-l border-gray-100 flex flex-col bg-white z-20 ${selectedUser ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-4 border-b border-gray-100">
               <div className="relative">
@@ -272,11 +276,9 @@ const fetchUsersList = async () => {
           </div>
         </div>
 
-        {/* Chat Area */}
         <div className={`flex-1 flex flex-col bg-gray-50 relative ${!selectedUser ? 'hidden md:flex' : 'flex'}`}>
           {selectedUser ? (
             <>
-              {/* Chat Header */}
               <div className="p-4 bg-white border-b border-gray-100 flex items-center justify-between shadow-sm z-10">
                 <div className="flex items-center gap-3 cursor-pointer" onClick={() => setShowProfile(!showProfile)}>
                   <button onClick={(e) => {e.stopPropagation(); setSelectedUser(null);}} className="md:hidden p-2 hover:bg-gray-100 rounded-full">➜</button>
@@ -289,7 +291,6 @@ const fetchUsersList = async () => {
                 <button onClick={() => setShowProfile(!showProfile)} className={`p-2 rounded-xl transition-colors ${showProfile ? 'bg-forest text-white' : 'bg-gray-100'}`}><Info size={20} /></button>
               </div>
 
-              {/* Messages List */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.map((msg, idx) => {
                   const isMe = msg.sender_id !== selectedUser.id; 
@@ -297,7 +298,20 @@ const fetchUsersList = async () => {
                     <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[70%] p-3 rounded-2xl shadow-sm text-sm relative group ${isMe ? (viewMode === 'admin' ? 'bg-blue-600' : 'bg-forest') + ' text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border border-gray-100'}`}>
                         <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                        {renderAttachment(msg)}
+                        
+                        {/* 👈 التعديل هنا: زر آمن لعرض المرفقات */}
+                        {msg.attachment_url && (
+                           <div className="mt-3">
+                              <button 
+                                onClick={() => handleViewAttachment(msg.attachment_url!)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors ${isMe ? 'bg-white/20 hover:bg-white/30 text-white' : 'bg-gray-100 hover:bg-gray-200 text-forest'}`}
+                              >
+                                 {msg.attachment_type === 'image' ? <ImageIcon size={16}/> : msg.attachment_type === 'audio' ? <Mic size={16}/> : <FileText size={16}/>}
+                                 فتح المرفق الآمن <ShieldCheck size={14} />
+                              </button>
+                           </div>
+                        )}
+
                         <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${isMe ? 'text-white/70' : 'text-gray-400'}`}>
                            {msg.created_at ? format(new Date(msg.created_at), 'p', { locale: ar }) : ''}
                            {isMe && (msg.is_read ? <CheckCircle size={10} /> : <Check size={10} />)}
@@ -309,7 +323,6 @@ const fetchUsersList = async () => {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input Area */}
               <div className="p-4 bg-white border-t border-gray-100">
                  {attachment && (
                      <div className="mb-2 p-2 bg-gray-100 rounded-lg flex items-center justify-between">
@@ -344,7 +357,6 @@ const fetchUsersList = async () => {
           )}
         </div>
 
-        {/* Profile Side Panel */}
         {selectedUser && showProfile && (
           <div className="w-80 bg-white border-r border-gray-100 animate-in slide-in-from-left duration-300 absolute md:relative z-30 h-full flex flex-col shadow-xl md:shadow-none text-right">
               <div className="p-4 border-b border-gray-100 flex justify-between items-center">

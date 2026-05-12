@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useFamily } from '../../contexts/FamilyContext';
-import { Check, Upload, Sparkles } from 'lucide-react';
+import { Check, Upload, Sparkles, Loader2 } from 'lucide-react';
 import Button from '../Button';
 import toast from 'react-hot-toast';
 
@@ -19,23 +19,28 @@ const SubscribeFirstTime: React.FC = () => {
     if (!receipt || !currentProfile) return;
     setLoading(true);
     try {
-      const fileName = `new_sub_${Date.now()}.jpg`;
+      const fileExt = receipt.name.split('.').pop();
+      const fileName = `new_sub_${currentProfile.id}_${Date.now()}.${fileExt}`;
       await supabase.storage.from('receipts').upload(fileName, receipt);
-      const { data: urlData } = supabase.storage.from('receipts').getPublicUrl(fileName);
+      
+      // 👈 التعديل هنا: استخدام مسار الملف ليكون سري
 
       await supabase.from('payment_requests').insert([{
         user_id: currentProfile.id,
         amount: totalPrice,
         plan_type: 'helix_family_plan',
         status: 'pending',
-        receipt_url: urlData.publicUrl,
+        receipt_url: fileName, // 👈 حفظ المسار
         renewal_metadata: { sub_count: subCount }
       }]);
 
       toast.success("تم إرسال طلب اشتراكك بنجاح!");
       window.location.reload();
-    } catch (e: any) { toast.error(e.message); }
-    finally { setLoading(false); }
+    } catch (e: any) { 
+      toast.error(e.message); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   return (
@@ -75,9 +80,10 @@ const SubscribeFirstTime: React.FC = () => {
 
         <Button 
           onClick={() => { if (!loading && receipt) handleSubscribe(); }} 
-          className={`w-full py-4 text-lg ${(!receipt || loading) ? 'opacity-50' : ''}`}
+          className={`w-full py-4 text-lg justify-center ${(!receipt || loading) ? 'opacity-50' : ''}`}
+          disabled={!receipt || loading}
         >
-          {loading ? 'جاري الإرسال...' : 'اشترك الآن'}
+          {loading ? <Loader2 className="animate-spin" /> : 'اشترك الآن'}
         </Button>
       </div>
     </div>

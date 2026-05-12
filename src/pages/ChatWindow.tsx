@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useFamily } from '../contexts/FamilyContext';
 import { 
   Send, Check, CheckCircle, Paperclip, Mic, 
-  StopCircle, X, Image as ImageIcon, FileText, Loader2 
+  StopCircle, X, Image as ImageIcon, FileText, Loader2, ShieldCheck 
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
@@ -31,7 +31,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ type }) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  // 1. جلب المستلم والاشتراك اللحظي المحمي
   useEffect(() => {
     let isMounted = true;
     let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -51,7 +50,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ type }) => {
           setReceiverId(data.id);
           fetchMessages(currentProfile.id, data.id);
 
-          // 🧹 إنشاء القناة والاشتراك (محمية بفلتر قوي لمنع التسريب)
           const channelName = `chat_${type}_${currentProfile.id}_${Date.now()}`;
           channel = supabase.channel(channelName)
             .on('postgres_changes', 
@@ -59,11 +57,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ type }) => {
                 event: 'INSERT', 
                 schema: 'public', 
                 table: 'messages',
-                // 🧹 فلترة لاستقبال رسائل هذا المحادثة فقط
                 filter: `or(and(sender_id.eq.${currentProfile.id},receiver_id.eq.${data.id}),and(sender_id.eq.${data.id},receiver_id.eq.${currentProfile.id}))`
               }, 
               (payload: any) => {
-                // تحديث الرسائل في لحظتها
                 if (isMounted) {
                     setMessages(prev => [...prev, payload.new]);
                     scrollToBottom();
@@ -80,12 +76,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ type }) => {
 
     initChat();
 
-    // 🧹 دالة التنظيف الفورية عند إغلاق الشات
     return () => { 
         isMounted = false;
         if (channel) supabase.removeChannel(channel); 
     };
-  }, [currentProfile, type]); // شيلنا receiverId عشان ميعملش Loop
+  }, [currentProfile, type]); 
 
   const fetchMessages = async (profileId: string, rId: string | null) => {
     if (!rId) return;
@@ -104,25 +99,28 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ type }) => {
     if (!receiverId || (!newMessage.trim() && !attachment) || !currentProfile) return;
 
     setUploading(true);
-    let attachmentUrl = null;
+    let attachmentPath = null;
     let attachmentType = null;
 
     try {
       if (attachment) {
         const fileExt = attachment.name.split('.').pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage.from('chat-attachments').upload(fileName, attachment);
+        const filePath = `${currentProfile.id}/${Date.now()}.${fileExt}`;
+        
+        // 1. رفع الملف
+        const { error: uploadError } = await supabase.storage.from('chat-attachments').upload(filePath, attachment);
         if (uploadError) throw uploadError;
-        const { data } = supabase.storage.from('chat-attachments').getPublicUrl(fileName);
-        attachmentUrl = data.publicUrl;
+        
+        // 2. 👈 التعديل هنا: حفظ المسار السري فقط بدلاً من الرابط العام (getPublicUrl)
+        attachmentPath = filePath;
         attachmentType = attachment.type.startsWith('image/') ? 'image' : attachment.type.startsWith('audio/') ? 'audio' : 'file';
       }
 
       const { error } = await supabase.from('messages').insert([{
         sender_id: currentProfile.id,
         receiver_id: receiverId,
-        content: attachmentType === 'audio' ? '🎤 رسالة صوتية' : (newMessage || (attachmentType === 'image' ? '📷 صورة' : '📎 ملف')),
-        attachment_url: attachmentUrl,
+        content: attachmentType === 'audio' ? '🎤 رسالة صوتية' : (newMessage || (attachmentType === 'image' ? '📷 صورة مرفقة' : '📎 ملف مرفق')),
+        attachment_url: attachmentPath, // حفظ المسار المشفر
         attachment_type: attachmentType,
         recipient_type: type, 
         is_read: false
@@ -137,12 +135,30 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ type }) => {
       setNewMessage('');
       setAttachment(null);
       
-      // مش محتاجين نعمل fetchMessages لأن הـ Realtime (payload.new) هيضيفها لوحده سريعاً
-      // fetchMessages(currentProfile.id, receiverId); 
-      
     } catch (error: any) {
       toast.error("فشل الإرسال");
     } finally { setUploading(false); }
+  };
+
+  // 🔥 دالة جديدة لتوليد رابط مشفر عند الضغط على المرفق
+  const handleViewAttachment = async (pathOrUrl: string) => {
+    if (!pathOrUrl) return;
+    const loadingToast = toast.loading('جاري فك تشفير المرفق...');
+    try {
+        if (pathOrUrl.startsWith('http')) {
+            toast.dismiss(loadingToast);
+            window.open(pathOrUrl, '_blank');
+            return;
+        }
+        // توليد رابط مؤقت لمدة ساعة واحدة
+        const { data, error } = await supabase.storage.from('chat-attachments').createSignedUrl(pathOrUrl, 3600);
+        if (error || !data) throw new Error("لا يمكن الوصول للملف المحمي");
+        
+        toast.dismiss(loadingToast);
+        window.open(data.signedUrl, '_blank');
+    } catch (err: any) {
+        toast.error(err.message, { id: loadingToast });
+    }
   };
 
   const startRecording = async () => {
@@ -185,14 +201,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ type }) => {
             <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[85%] p-4 rounded-2xl shadow-sm text-sm ${isMe ? 'bg-forest text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border border-gray-100'}`}>
                 <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                
+                {/* 👈 التعديل هنا: زر آمن لعرض المرفقات المشفرة */}
                 {msg.attachment_url && (
-                   <div className="mt-2">
-                     {msg.attachment_type === 'image' ? <img src={msg.attachment_url} className="rounded-lg max-w-full" /> : 
-                      msg.attachment_type === 'audio' ? <audio controls src={msg.attachment_url} className="w-48 h-8" /> : 
-                      <a href={msg.attachment_url} target="_blank" className="flex items-center gap-2 underline font-bold"><FileText size={14}/> تحميل المرفق</a>}
+                   <div className="mt-3">
+                      <button 
+                        onClick={() => handleViewAttachment(msg.attachment_url)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors ${isMe ? 'bg-white/20 hover:bg-white/30 text-white' : 'bg-gray-100 hover:bg-gray-200 text-forest'}`}
+                      >
+                         {msg.attachment_type === 'image' ? <ImageIcon size={16}/> : msg.attachment_type === 'audio' ? <Mic size={16}/> : <FileText size={16}/>}
+                         فتح المرفق المشفر <ShieldCheck size={14} />
+                      </button>
                    </div>
                 )}
-                <div className={`text-[10px] mt-1 flex justify-end gap-1 ${isMe ? 'text-white/70' : 'text-gray-400'}`}>
+
+                <div className={`text-[10px] mt-2 flex justify-end gap-1 ${isMe ? 'text-white/70' : 'text-gray-400'}`}>
                   {format(new Date(msg.created_at), 'p', { locale: ar })}
                   {isMe && (msg.is_read ? <CheckCircle size={10} /> : <Check size={10} />)}
                 </div>

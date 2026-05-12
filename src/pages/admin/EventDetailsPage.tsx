@@ -5,14 +5,18 @@ import { Calendar, MapPin, Users, ArrowRight, Check, X, User, ExternalLink } fro
 import toast from 'react-hot-toast';
 import Avatar from '../../components/Avatar';
 import type { Event } from '../../types';
+import ConfirmModal from '../../components/ConfirmModal'; // 👈 استيراد المودال
 
 const EventDetailsPage: React.FC = () => {
-  const { id } = useParams(); // نجيب آيدي الايفينت من الرابط
+  const { id } = useParams();
   const navigate = useNavigate();
   
   const [event, setEvent] = useState<Event | null>(null);
   const [attendees, setAttendees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // حالة المودال (نحتاج تخزين الأكشن والـ ID معاً)
+  const [confirmAction, setConfirmAction] = useState<{ bookingId: string, action: 'confirmed' | 'rejected', userId: string } | null>(null);
 
   useEffect(() => {
     if (id) fetchData();
@@ -20,17 +24,10 @@ const EventDetailsPage: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      // 1. جلب تفاصيل الايفينت
-      const { data: eventData, error: eventError } = await supabase
-        .from('events')
-        .select('*')
-        .eq('id', id!)
-        .single();
-      
+      const { data: eventData, error: eventError } = await supabase.from('events').select('*').eq('id', id!).single();
       if (eventError) throw eventError;
       setEvent(eventData);
 
-      // 2. جلب قائمة الحضور لهذا الايفينت فقط
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('event_bookings')
         .select('*, profiles(full_name, phone, email, avatar_url)')
@@ -48,13 +45,14 @@ const EventDetailsPage: React.FC = () => {
     }
   };
 
-  const handleAction = async (bookingId: string, action: 'confirmed' | 'rejected', userId: string) => {
-    if (!window.confirm(action === 'confirmed' ? "تأكيد الحجز؟" : "رفض الحجز؟")) return;
+  // 👈 تنفيذ الأكشن بعد تأكيد المودال
+  const executeAction = async () => {
+    if (!confirmAction) return;
+    const { bookingId, action, userId } = confirmAction;
 
     try {
         await supabase.from('event_bookings').update({ status: action }).eq('id', bookingId);
         
-        // إشعار للعميل
         await supabase.from('notifications').insert([{
             user_id: userId,
             is_admin_notification: false,
@@ -65,7 +63,7 @@ const EventDetailsPage: React.FC = () => {
         }]);
 
         toast.success("تم تحديث الحالة");
-        fetchData(); // تحديث القائمة
+        fetchData();
     } catch (err) {
         toast.error("حدث خطأ");
     }
@@ -74,22 +72,19 @@ const EventDetailsPage: React.FC = () => {
   if (loading) return <div className="p-10 text-center">جاري التحميل...</div>;
   if (!event) return <div className="p-10 text-center">لم يتم العثور على الفعالية</div>;
 
-  // حساب الإحصائيات
   const confirmedCount = attendees.filter(a => a.status === 'confirmed').length;
   const capacityPercentage = Math.min(100, (confirmedCount / (event.max_capacity || 50)) * 100);
 
   return (
     <div className="animate-in fade-in duration-500 pb-20">
       
-      {/* زر الرجوع */}
       <button onClick={() => navigate('/admin/events')} className="flex items-center gap-2 text-gray-500 hover:text-forest mb-6 font-bold">
         <ArrowRight size={20} /> العودة للفعاليات
       </button>
 
-      {/* كارت تفاصيل الايفينت */}
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-200 mb-8 flex flex-col md:flex-row gap-8">
         <div className="w-full md:w-1/3 h-48 md:h-auto bg-gray-100 rounded-2xl overflow-hidden relative">
-            <img src={event.image_url || 'https://placehold.co/600x400'}loading="lazy" alt={event.title} className="w-full h-full object-cover" />
+            <img src={event.image_url || 'https://placehold.co/600x400'} loading="lazy" alt={event.title} className="w-full h-full object-cover" />
             <div className="absolute top-2 right-2 bg-forest text-white px-3 py-1 rounded-lg text-xs font-bold">
                 {(event.price ?? 0) > 0 ? `${event.price} ج.م` : 'مجاني'}
             </div>
@@ -102,7 +97,6 @@ const EventDetailsPage: React.FC = () => {
                 <span className="flex items-center gap-1"><MapPin size={16}/> {event.location || 'أونلاين'}</span>
             </div>
 
-            {/* شريط التقدم */}
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                 <div className="flex justify-between text-sm font-bold mb-2">
                     <span className="text-forest flex items-center gap-2"><Users size={16}/> عدد الحضور المؤكد</span>
@@ -121,7 +115,6 @@ const EventDetailsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* جدول الحضور */}
       <h2 className="text-2xl font-bold text-forest mb-6 flex items-center gap-2">
          <Users className="text-orange" /> كشف الحضور والحجوزات ({attendees.length})
       </h2>
@@ -161,7 +154,7 @@ const EventDetailsPage: React.FC = () => {
                                 </td>
                                 <td className="px-6 py-4">
                                     {booking.payment_proof ? (
-                                        <a href={booking.payment_proof} target="_blank" className="text-blue-600 hover:underline text-xs flex items-center gap-1 font-bold">
+                                        <a href={booking.payment_proof} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs flex items-center gap-1 font-bold">
                                             <ExternalLink size={12}/> عرض الإيصال
                                         </a>
                                     ) : (
@@ -171,8 +164,9 @@ const EventDetailsPage: React.FC = () => {
                                 <td className="px-6 py-4">
                                     {booking.status === 'pending' && (
                                         <div className="flex gap-2">
-                                            <button onClick={() => handleAction(booking.id, 'confirmed', booking.user_id)} className="p-1 bg-green-100 text-green-700 rounded hover:bg-green-200" title="قبول"><Check size={16}/></button>
-                                            <button onClick={() => handleAction(booking.id, 'rejected', booking.user_id)} className="p-1 bg-red-100 text-red-700 rounded hover:bg-red-200" title="رفض"><X size={16}/></button>
+                                            {/* 👈 التعديل هنا: فتح المودال */}
+                                            <button onClick={() => setConfirmAction({ bookingId: booking.id, action: 'confirmed', userId: booking.user_id })} className="p-1 bg-green-100 text-green-700 rounded hover:bg-green-200" title="قبول"><Check size={16}/></button>
+                                            <button onClick={() => setConfirmAction({ bookingId: booking.id, action: 'rejected', userId: booking.user_id })} className="p-1 bg-red-100 text-red-700 rounded hover:bg-red-200" title="رفض"><X size={16}/></button>
                                         </div>
                                     )}
                                 </td>
@@ -183,6 +177,15 @@ const EventDetailsPage: React.FC = () => {
             </div>
           </div>
       )}
+
+      {/* 👈 المودال */}
+      <ConfirmModal 
+         isOpen={!!confirmAction}
+         title={confirmAction?.action === 'confirmed' ? 'تأكيد الحجز' : 'رفض الحجز'}
+         message={confirmAction?.action === 'confirmed' ? 'هل أنت متأكد من تأكيد هذا الحجز للعميل؟' : 'هل أنت متأكد من رفض الحجز وإلغائه؟'}
+         onCancel={() => setConfirmAction(null)}
+         onConfirm={executeAction}
+      />
     </div>
   );
 };

@@ -11,7 +11,6 @@ const PRICING = {
 };
 
 const QuickRenewModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  // 👇 استدعينا refreshFamily هنا
   const { currentProfile, familyMembers, refreshFamily } = useFamily();
   const [receipt, setReceipt] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -31,17 +30,19 @@ const QuickRenewModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     setLoading(true);
     try {
       const fileExt = receipt.name.split('.').pop();
-      const fileName = `renew_${Date.now()}.${fileExt}`;
+      const fileName = `renew_${currentProfile.id}_${Date.now()}.${fileExt}`;
+      
+      // 1. رفع الملف
       const { error: uploadError } = await supabase.storage.from('receipts').upload(fileName, receipt);
       if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from('receipts').getPublicUrl(fileName);
-
+      
+      // 2. 👈 التعديل هنا: حفظ المسار المشفر فقط في الداتابيز
       const { error } = await supabase.from('payment_requests').insert([{
         user_id: currentProfile.id,
         amount: calculatedAmount,
         plan_type: 'renewal',
         status: 'pending',
-        receipt_url: urlData.publicUrl,
+        receipt_url: fileName, // لا نستخدم getPublicUrl
         renewal_metadata: { type: 'quick_renew', member_count: familyMembers.length }
       }]);
 
@@ -54,7 +55,6 @@ const QuickRenewModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
       toast.success("تم إرسال طلب التجديد!");
       onClose();
-      // 👇 التحديث السلس بدلاً من الـ reload المزعج
       refreshFamily(); 
     } catch (error: any) {
       toast.error(error.message);
@@ -87,7 +87,7 @@ const QuickRenewModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             ) : (
                 <div className="text-gray-400 flex flex-col items-center">
                     <Upload size={32} className="mb-2"/>
-                    <p>إرفاق الإيصال</p>
+                    <p>إرفاق الإيصال الآمن</p>
                 </div>
             )}
         </div>

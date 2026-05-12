@@ -5,6 +5,7 @@ import Button from '../../components/Button';
 import Input from '../../components/Input';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import ConfirmModal from '../../components/ConfirmModal'; // 👈 استيراد المودال
 
 const ManageEvents: React.FC = () => {
   const [events, setEvents] = useState<any[]>([]);
@@ -12,15 +13,11 @@ const ManageEvents: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
 
-  // Form State
+  // حالة المودال
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    date: '',
-    location: '',
-    image_url: '',
-    price: 0,
-    max_capacity: 50 // 👈 القيمة الافتراضية
+    title: '', description: '', date: '', location: '', image_url: '', price: 0, max_capacity: 50
   });
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -50,7 +47,7 @@ const ManageEvents: React.FC = () => {
       location: event.location || '',
       image_url: event.image_url || '',
       price: event.price || 0,
-      max_capacity: event.max_capacity || 50 // 👈 جلب السعة
+      max_capacity: event.max_capacity || 50
     });
     setIsModalOpen(true);
   };
@@ -81,22 +78,15 @@ const ManageEvents: React.FC = () => {
     setLoading(true);
     try {
       const eventData = {
-        title: formData.title,
-        description: formData.description,
-        event_date: formData.date,
-        location: formData.location,
-        image_url: formData.image_url,
-        price: formData.price,
-        max_capacity: formData.max_capacity // 👈 الحفظ في الداتابيز
+        title: formData.title, description: formData.description, event_date: formData.date,
+        location: formData.location, image_url: formData.image_url, price: formData.price, max_capacity: formData.max_capacity
       };
 
       if (editingEvent) {
-        // تحديث
         const { error } = await supabase.from('events').update(eventData).eq('id', editingEvent.id);
         if (error) throw error;
         toast.success("تم تعديل الفعالية بنجاح");
       } else {
-        // إضافة جديد
         const { error } = await supabase.from('events').insert([eventData]);
         if (error) throw error;
         toast.success("تم إضافة الفعالية بنجاح");
@@ -111,12 +101,12 @@ const ManageEvents: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("هل أنت متأكد من حذف هذه الفعالية؟")) return;
+  // 👈 دالة الحذف بعد التأكيد
+  const executeDelete = async (id: string) => {
     try {
       await supabase.from('events').delete().eq('id', id);
       setEvents(prev => prev.filter(e => e.id !== id));
-      toast.success("تم الحذف");
+      toast.success("تم الحذف بنجاح");
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -161,7 +151,8 @@ const ManageEvents: React.FC = () => {
                 <button onClick={() => openEditModal(event)} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold text-sm flex items-center justify-center gap-2">
                   <Edit size={16} /> تعديل
                 </button>
-                <button onClick={() => handleDelete(event.id)} className="flex-1 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-bold text-sm flex items-center justify-center gap-2">
+                {/* 👈 التعديل هنا: فتح المودال */}
+                <button onClick={() => setDeleteId(event.id)} className="flex-1 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-bold text-sm flex items-center justify-center gap-2">
                   <Trash2 size={16} /> حذف
                 </button>
               </div>
@@ -170,7 +161,6 @@ const ManageEvents: React.FC = () => {
         ))}
       </div>
 
-      {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white rounded-3xl w-full max-w-lg p-6 shadow-2xl relative animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
@@ -203,20 +193,9 @@ const ManageEvents: React.FC = () => {
                 <Input label="الموقع / الرابط" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} />
               </div>
 
-              {/* 👇 حقول السعر والسعة */}
               <div className="grid grid-cols-2 gap-4">
-                <Input 
-                    label="سعر التذكرة (0 = مجاني)" 
-                    type="number" 
-                    value={formData.price} 
-                    onChange={e => setFormData({...formData, price: Number(e.target.value)})} 
-                />
-                <Input 
-                    label="أقصى عدد للحضور" 
-                    type="number" 
-                    value={formData.max_capacity} 
-                    onChange={e => setFormData({...formData, max_capacity: Number(e.target.value)})} 
-                />
+                <Input label="سعر التذكرة (0 = مجاني)" type="number" value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} />
+                <Input label="أقصى عدد للحضور" type="number" value={formData.max_capacity} onChange={e => setFormData({...formData, max_capacity: Number(e.target.value)})} />
               </div>
 
               <div>
@@ -236,6 +215,15 @@ const ManageEvents: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* 👈 المودال */}
+      <ConfirmModal 
+         isOpen={!!deleteId}
+         title="تأكيد حذف الفعالية"
+         message="هل أنت متأكد من رغبتك في حذف هذه الفعالية نهائياً؟ سيتم إلغاء كافة حجوزات العملاء المتعلقة بها."
+         onCancel={() => setDeleteId(null)}
+         onConfirm={() => { if (deleteId) executeDelete(deleteId); }}
+      />
     </div>
   );
 };

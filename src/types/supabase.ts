@@ -7,8 +7,6 @@
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
@@ -77,7 +75,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       chat_messages: {
@@ -125,7 +123,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       client_documents: {
@@ -167,7 +165,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       daily_habits: {
@@ -209,7 +207,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       daily_logs: {
@@ -254,7 +252,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       daily_smart_plans: {
@@ -299,7 +297,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       event_bookings: {
@@ -348,7 +346,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       events: {
@@ -387,6 +385,134 @@ export type Database = {
         }
         Relationships: []
       }
+      
+      /* 👇 الجداول الجديدة الخاصة بالملف الطبي ونمط الحياة 👇 */
+      health_profile: {
+        Row: {
+          id: string
+          user_id: string
+          diseases: Json | null
+          has_allergies: boolean | null
+          allergies_details: Json | null | string
+          diet_type: string | null
+          family_history: Json | null
+          medications: Json | null | string
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          diseases?: Json | null
+          has_allergies?: boolean | null
+          allergies_details?: Json | null | string
+          diet_type?: string | null
+          family_history?: Json | null
+          medications?: Json | null | string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          diseases?: Json | null
+          has_allergies?: boolean | null
+          allergies_details?: Json | null | string
+          diet_type?: string | null
+          family_history?: Json | null
+          medications?: Json | null | string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_profile_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      lifestyle_profile: {
+        Row: {
+          id: string
+          user_id: string
+          goal: string | null
+          meals_per_day: number | null
+          has_breakfast: boolean | null
+          has_snacks: boolean | null
+          late_night_eating: boolean | null
+          favorite_foods: string | null
+          disliked_foods: string | null
+          water_liters: number | null
+          beverages: Json | null
+          activity_level: string | null
+          does_exercise: boolean | null
+          exercise_details: Json | null
+          sleep_hours: number | null
+          sleep_quality: string | null
+          smoker: boolean | null
+          stress_level: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          goal?: string | null
+          meals_per_day?: number | null
+          has_breakfast?: boolean | null
+          has_snacks?: boolean | null
+          late_night_eating?: boolean | null
+          favorite_foods?: string | null
+          disliked_foods?: string | null
+          water_liters?: number | null
+          beverages?: Json | null
+          activity_level?: string | null
+          does_exercise?: boolean | null
+          exercise_details?: Json | null
+          sleep_hours?: number | null
+          sleep_quality?: string | null
+          smoker?: boolean | null
+          stress_level?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          goal?: string | null
+          meals_per_day?: number | null
+          has_breakfast?: boolean | null
+          has_snacks?: boolean | null
+          late_night_eating?: boolean | null
+          favorite_foods?: string | null
+          disliked_foods?: string | null
+          water_liters?: number | null
+          beverages?: Json | null
+          activity_level?: string | null
+          does_exercise?: boolean | null
+          exercise_details?: Json | null
+          sleep_hours?: number | null
+          sleep_quality?: string | null
+          smoker?: boolean | null
+          stress_level?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lifestyle_profile_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      /* 👆 نهاية الجداول الجديدة 👆 */
+
       inbody_records: {
         Row: {
           ai_summary: string | null
@@ -438,7 +564,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       landing_page_settings: {
@@ -547,7 +673,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       notifications: {
@@ -598,7 +724,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       payment_requests: {
@@ -649,7 +775,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       plan_tasks: {
@@ -693,7 +819,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "plans"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       plans: {
@@ -735,7 +861,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       posts: {
@@ -917,7 +1043,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       promo_codes: {
@@ -1028,7 +1154,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
     }
@@ -1061,7 +1187,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
     }

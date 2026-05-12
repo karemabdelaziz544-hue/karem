@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useFamily } from '../../contexts/FamilyContext';
 import { supabase } from '../../lib/supabase';
-import { X, Check, Upload, Users, Lock, ChevronLeft, ChevronRight, Calculator, Sparkles } from 'lucide-react';
+import { X, Check, Upload, Users, Lock, Calculator, Sparkles } from 'lucide-react';
 import Button from '../Button';
 import toast from 'react-hot-toast';
 
@@ -20,7 +20,6 @@ const ModifySubscriptionModal: React.FC<{ onClose: () => void }> = ({ onClose })
 
   const totalPrice = PRICING.base + (subCount * PRICING.extra);
 
-  // 1. تحديث دالة الاختيار لتكون حرة ومنطقية
   const toggleMemberSelection = (id: string) => {
     setSelectedMembersToKeep(prev => {
       if (prev.includes(id)) {
@@ -39,11 +38,9 @@ const ModifySubscriptionModal: React.FC<{ onClose: () => void }> = ({ onClose })
   const handleNext = () => {
     if (step === 1) {
       if (subCount < currentSubCount) {
-        // لو قلل العدد، يختار يدوي من يفضل
         setSelectedMembersToKeep([]);
         setStep(2);
       } else {
-        // لو زود العدد أو ثبت، نختار الجميع تلقائياً وننتقل للدفع
         const allCurrentIds = subMembers.map(m => m.id);
         setSelectedMembersToKeep(allCurrentIds);
         setStep(3);
@@ -57,18 +54,18 @@ const ModifySubscriptionModal: React.FC<{ onClose: () => void }> = ({ onClose })
     if (!receipt || !currentProfile) return;
     setLoading(true);
     try {
-      const fileName = `modify_${Date.now()}.jpg`;
+      const fileName = `modify_${currentProfile.id}_${Date.now()}.jpg`;
       const { error: upErr } = await supabase.storage.from('receipts').upload(fileName, receipt);
       if (upErr) throw upErr;
-      const { data: urlData } = supabase.storage.from('receipts').getPublicUrl(fileName);
+      
+      // 👈 التعديل هنا: استخدام fileName مباشرة بدلا من getPublicUrl
 
-      // إرسال طلب واحد منظم يحتوي على كافة التفاصيل للأدمن
       const { error } = await supabase.from('payment_requests').insert([{
         user_id: currentProfile.id,
         amount: totalPrice,
         plan_type: 'helix_integrated',
         status: 'pending',
-        receipt_url: urlData.publicUrl,
+        receipt_url: fileName, // 👈 حفظ المسار فقط
         renewal_metadata: { 
             sub_count: subCount, 
             keep_member_ids: selectedMembersToKeep,
@@ -112,7 +109,6 @@ const ModifySubscriptionModal: React.FC<{ onClose: () => void }> = ({ onClose })
                 </div>
             )}
 
-            {/* 2. تحديث واجهة الخطوة الثانية (Step 2) لضمان وضوح الحالة */}
             {step === 2 && (
               <div className="space-y-4">
                 <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex gap-3 text-amber-700">

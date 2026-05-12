@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Phone, ChevronRight, PlusCircle, FileText, Clock, CheckCircle, Activity, TrendingUp, Users, Link as LinkIcon, Edit2, Save, X, Calendar } from 'lucide-react';
+import { 
+  Phone, ChevronRight, PlusCircle, FileText, Clock, CheckCircle, 
+  Activity, TrendingUp, Users, Link as LinkIcon, Edit2, Save, X, Calendar,
+  HeartPulse, AlertTriangle, Coffee, Moon, CheckCircle2, Droplet, Info
+} from 'lucide-react';
 import Button from '../../components/Button';
 import PlanDetailsModal from '../../components/PlanDetailsModal';
 import Avatar from '../../components/Avatar';
-import toast from 'react-hot-toast'; // تأكد من تثبيت هذه المكتبة واستيرادها
+import toast from 'react-hot-toast'; 
 import type { Profile, Plan, ClientDocument, InbodyRecord } from '../../types';
 
 const ClientDetails: React.FC = () => {
@@ -18,11 +22,15 @@ const ClientDetails: React.FC = () => {
   const [plans, setPlans] = useState<any[]>([]);
   const [docs, setDocs] = useState<ClientDocument[]>([]);
   const [inbodyRecords, setInbodyRecords] = useState<InbodyRecord[]>([]);
+  
+  // 🔥 حالات البيانات الطبية ونمط الحياة الجديدة
+  const [healthProfile, setHealthProfile] = useState<any>(null);
+  const [lifestyleProfile, setLifestyleProfile] = useState<any>(null);
+
   const [loading, setLoading] = useState(true);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 👇 حالات التعديل الجديدة
   const [isEditingDate, setIsEditingDate] = useState(false);
   const [newDate, setNewDate] = useState('');
   const [savingDate, setSavingDate] = useState(false);
@@ -42,11 +50,9 @@ const ClientDetails: React.FC = () => {
         
       setClient(profile);
 
-      // تهيئة حقل التاريخ للتعديل
       if (profile?.subscription_end_date) {
           setNewDate(profile.subscription_end_date.split('T')[0]);
       } else {
-          // لو مفيش تاريخ، نحط تاريخ النهاردة كبداية
           setNewDate(new Date().toISOString().split('T')[0]);
       }
 
@@ -71,21 +77,25 @@ const ClientDetails: React.FC = () => {
       const { data: inbodyData } = await supabase.from('inbody_records').select('*').eq('user_id', id!).order('record_date', { ascending: false });
       setInbodyRecords(inbodyData || []);
 
+      // 👇 جلب الملف الطبي ونمط الحياة للأدمن
+      const { data: health } = await supabase.from('health_profile').select('*').eq('user_id', id!).single();
+      setHealthProfile(health);
+
+      const { data: lifestyle } = await supabase.from('lifestyle_profile').select('*').eq('user_id', id!).single();
+      setLifestyleProfile(lifestyle);
+
       setLoading(false);
     };
     if (id) fetchData();
   }, [id]);
 
-  // 👇 دالة الحفظ الذكية
   const handleSaveDate = async () => {
     if (!newDate) return;
     setSavingDate(true);
 
     try {
-      // منطق ذكي: مقارنة التاريخ لتحديد الحالة
       const targetDate = new Date(newDate);
       const now = new Date();
-      // لو التاريخ المختار أكبر من الآن -> نشط، غير كده -> منتهي
       const newStatus = targetDate > now ? 'active' : 'expired';
 
       const { error } = await supabase
@@ -93,7 +103,7 @@ const ClientDetails: React.FC = () => {
         .update({
           subscription_end_date: newDate,
           subscription_status: newStatus,
-          is_locked: newStatus === 'expired' // (اختياري) قفل الحساب لو منتهي
+          is_locked: newStatus === 'expired'
         })
         .eq('id', client!.id);
 
@@ -101,7 +111,6 @@ const ClientDetails: React.FC = () => {
 
       toast.success(`تم التحديث: الاشتراك الآن ${newStatus === 'active' ? 'نشط' : 'منتهي'}`);
       
-      // تحديث البيانات محلياً
       setClient(prev => prev ? { ...prev, subscription_status: newStatus, subscription_end_date: newDate } : prev);
       setIsEditingDate(false);
 
@@ -118,32 +127,37 @@ const ClientDetails: React.FC = () => {
   const effectiveStatus = manager ? manager.subscription_status : client.subscription_status;
   const effectiveEndDate = manager ? manager.subscription_end_date : client.subscription_end_date;
 
+  // 🚨 منطق التنبيه الذكي
+  const needsAttention = healthProfile && (
+    (healthProfile.diseases && healthProfile.diseases.length > 0) ||
+    healthProfile.has_allergies ||
+    (healthProfile.medications && healthProfile.medications.trim() !== '')
+  );
+
   return (
     <div className="animate-in slide-in-from-bottom-4 duration-500 pb-10">
       
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-gray-400 text-sm mb-6">
+      <div className="flex items-center gap-2 text-gray-400 text-sm mb-6 font-tajawal font-bold">
         <Link to="/admin/clients" className="hover:text-forest">العملاء</Link>
         <ChevronRight size={14} />
-        <span className="text-forest font-bold">{client.full_name}</span>
+        <span className="text-forest">{client.full_name}</span>
       </div>
 
       {/* Header Card */}
-      <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200 mb-8 flex flex-col md:flex-row justify-between items-center gap-6">
+      <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200 mb-8 flex flex-col md:flex-row justify-between items-center gap-6 font-tajawal">
         <div className="flex items-center gap-6">
           <div className="relative">
              <Avatar src={client.avatar_url} name={client.full_name} size="xl" />
              {manager && <div className="absolute -bottom-1 -right-1 bg-white text-orange rounded-full p-1 border-2 border-orange"><Users size={12} /></div>}
           </div>
-           
+            
            <div>
              <h1 className="text-3xl font-extrabold text-forest mb-2">{client.full_name}</h1>
              <div className="flex flex-wrap gap-4 text-gray-600 font-medium text-sm">
                {!manager && <span className="flex items-center gap-2"><Phone size={16}/> {client.phone || 'رقم غير مسجل'}</span>}
                
-               {/* 👇 هنا الجزء المعدل: عرض الحالة والتاريخ مع التعديل */}
                {manager ? (
-                   // لو تابع: عرض زر الذهاب للمدير فقط
                    <div 
                         className="flex items-center gap-2 bg-orange/5 px-4 py-2 rounded-full text-orange font-bold border border-orange/10 cursor-pointer hover:bg-orange/10 transition-colors" 
                         onClick={() => navigate(`/admin/clients/${manager.id}`)}
@@ -152,15 +166,12 @@ const ClientDetails: React.FC = () => {
                        تابع لـ: {manager.full_name} (إدارة الاشتراك)
                    </div>
                ) : (
-                   // لو حساب رئيسي: إمكانية تعديل التاريخ
                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                       {/* بادج الحالة */}
                        <span className={`px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 ${client.subscription_status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                            {client.subscription_status === 'active' ? <CheckCircle size={14}/> : <Clock size={14}/>}
                            {client.subscription_status === 'active' ? 'نشط' : 'منتهي'}
                        </span>
 
-                       {/* منطقة التاريخ والتحرير */}
                        <div className="flex items-center gap-2 bg-gray-50 px-3 py-1 rounded-lg border border-gray-200">
                            <Calendar size={14} className="text-gray-400"/>
                            {isEditingDate ? (
@@ -204,9 +215,113 @@ const ClientDetails: React.FC = () => {
         </Button>
       </div>
 
+      {/* 🚨 التنبيه الذكي (Smart Alert) */}
+      {needsAttention && (
+        <div className="bg-red-50 border-2 border-red-200 p-6 rounded-3xl flex items-start gap-4 mb-8 font-tajawal animate-in zoom-in duration-300">
+          <div className="bg-red-100 p-3 rounded-2xl text-red-600 shrink-0">
+            <AlertTriangle size={28} />
+          </div>
+          <div>
+            <h3 className="text-red-700 font-black text-lg mb-1">تنبيه طبي هام!</h3>
+            <p className="text-red-600 text-sm font-bold leading-relaxed">
+              هذا العميل لديه أمراض مزمنة، أو حساسية، أو أدوية نشطة. يُرجى مراجعة <strong className="bg-red-100 px-1 rounded">الملف الطبي</strong> بعناية فائقة.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 🏥 الملف الطبي ونمط الحياة (جديد) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 font-tajawal">
+        {/* الملف الطبي */}
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200">
+          <h3 className="text-xl font-black text-gray-800 mb-6 flex items-center gap-2">
+            <HeartPulse className="text-red-500" size={24} /> الملف الطبي
+          </h3>
+          {healthProfile ? (
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-2xl">
+                <span className="text-xs text-gray-400 font-bold block mb-2">الأمراض المزمنة</span>
+                <div className="flex flex-wrap gap-2">
+                  {healthProfile.diseases?.length ? (
+                    healthProfile.diseases.map((d: string) => <span key={d} className="bg-red-100 text-red-700 px-3 py-1 rounded-lg text-xs font-bold">{d}</span>)
+                  ) : <span className="text-green-600 text-sm font-bold flex items-center gap-1"><CheckCircle2 size={16}/> سليم</span>}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-2xl">
+                  <span className="text-xs text-gray-400 font-bold block mb-2">الحساسية</span>
+                  {healthProfile.has_allergies ? (
+                    <span className="text-red-600 text-sm font-bold"><AlertTriangle size={14} className="inline"/> يوجد ({healthProfile.allergies_details})</span>
+                  ) : <span className="text-green-600 text-sm font-bold">لا يوجد</span>}
+                </div>
+                <div className="bg-gray-50 p-4 rounded-2xl">
+                  <span className="text-xs text-gray-400 font-bold block mb-2">تفضيل النظام</span>
+                  <span className="text-forest text-sm font-bold">{healthProfile.diet_type || 'عادي'}</span>
+                </div>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-2xl">
+                <span className="text-xs text-gray-400 font-bold block mb-2">الأدوية والمكملات</span>
+                <p className="text-sm text-gray-700 font-bold whitespace-pre-wrap">{healthProfile.medications || 'لا يوجد'}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200 text-gray-400 font-bold">
+              <Info size={32} className="mx-auto mb-2 opacity-50" /> لم يقم العميل بإدخال ملفه الطبي
+            </div>
+          )}
+        </div>
+
+        {/* نمط الحياة */}
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200">
+          <h3 className="text-xl font-black text-gray-800 mb-6 flex items-center gap-2">
+            <Coffee className="text-orange" size={24} /> نمط الحياة
+          </h3>
+          {lifestyleProfile ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-2xl">
+                  <span className="text-xs text-gray-400 font-bold block mb-1">الهدف الأساسي</span>
+                  <span className="text-forest text-sm font-black">{lifestyleProfile.goal || '-'}</span>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-2xl">
+                  <span className="text-xs text-gray-400 font-bold block mb-1">المياه والمشروبات</span>
+                  <span className="text-blue-600 text-sm font-black">{lifestyleProfile.water_liters} لتر يومياً</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-2xl">
+                  <span className="text-xs text-gray-400 font-bold block mb-1">النشاط البدني</span>
+                  <span className="text-gray-700 text-sm font-black">{lifestyleProfile.activity_level}</span>
+                  {lifestyleProfile.does_exercise && <p className="text-[10px] text-gray-500 mt-1">{lifestyleProfile.exercise_details?.type} ({lifestyleProfile.exercise_details?.days} أيام)</p>}
+                </div>
+                <div className="bg-gray-50 p-4 rounded-2xl">
+                  <span className="text-xs text-gray-400 font-bold block mb-1">النوم والتوتر</span>
+                  <p className="text-[11px] text-gray-600 font-bold">نوم: {lifestyleProfile.sleep_hours} س ({lifestyleProfile.sleep_quality})</p>
+                  <p className="text-[11px] text-gray-600 font-bold">توتر: {lifestyleProfile.stress_level}</p>
+                </div>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-2xl grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-xs text-green-600 font-bold block mb-1">يفضل أكل</span>
+                  <p className="text-gray-700 text-sm font-bold truncate">{lifestyleProfile.favorite_foods || '-'}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-red-500 font-bold block mb-1">لا يفضل أكل</span>
+                  <p className="text-gray-700 text-sm font-bold truncate">{lifestyleProfile.disliked_foods || '-'}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200 text-gray-400 font-bold">
+              <Moon size={32} className="mx-auto mb-2 opacity-50" /> لم يقم العميل بإدخال نمط حياته
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* باقي الأقسام (أفراد العائلة، InBody، الملفات...) كما هي */}
       {!manager && familyMembers.length > 0 && (
-          <div className="mb-8">
+          <div className="mb-8 font-tajawal">
             <h2 className="text-xl font-bold text-forest mb-4 flex items-center gap-2">
                 <Users className="text-orange" /> أفراد العائلة المضافين ({familyMembers.length})
             </h2>
@@ -236,9 +351,9 @@ const ClientDetails: React.FC = () => {
       )}
 
       {/* InBody Section */}
-      <div className="mb-8">
+      <div className="mb-8 font-tajawal">
         <h2 className="text-xl font-bold text-forest mb-4 flex items-center gap-2"><Activity className="text-orange" /> سجلات القياس (InBody)</h2>
-        {inbodyRecords.length === 0 ? <div className="bg-white p-8 rounded-2xl border-2 border-dashed border-gray-200 text-center text-gray-400">لا توجد سجلات.</div> : (
+        {inbodyRecords.length === 0 ? <div className="bg-white p-8 rounded-2xl border-2 border-dashed border-gray-200 text-center text-gray-400 font-bold">لا توجد سجلات.</div> : (
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                 <table className="w-full text-right">
                     <thead className="bg-gray-50 text-gray-500 text-sm font-bold"><tr><th className="p-4">التاريخ</th><th className="p-4">الوزن</th><th className="p-4">تقرير AI</th></tr></thead>
@@ -249,25 +364,24 @@ const ClientDetails: React.FC = () => {
       </div>
 
       {/* Files & Subscription Info Grid */}
-      <div className="grid md:grid-cols-3 gap-6 mb-8">
+      <div className="grid md:grid-cols-3 gap-6 mb-8 font-tajawal">
         <div className="md:col-span-1 bg-white p-6 rounded-3xl border border-gray-200">
             <h3 className="font-bold text-forest mb-4 flex items-center gap-2"><FileText className="text-orange" /> الملفات الطبية</h3>
-            {docs.length === 0 ? <p className="text-gray-400 text-sm">لا توجد ملفات.</p> : <ul className="space-y-3">{docs.map(d => <li key={d.id} className="text-sm"><a href={d.file_url} target="_blank" className="text-blue-600 hover:underline">{d.file_name}</a></li>)}</ul>}
+            {docs.length === 0 ? <p className="text-gray-400 text-sm font-bold">لا توجد ملفات.</p> : <ul className="space-y-3">{docs.map(d => <li key={d.id} className="text-sm"><a href={d.file_url} target="_blank" className="text-blue-600 font-bold hover:underline">{d.file_name}</a></li>)}</ul>}
         </div>
         
-        {/* Subscription Detail Box (Updated to reflect current status) */}
-        <div className="md:col-span-2 bg-forest text-cream p-6 rounded-3xl relative overflow-hidden flex flex-col justify-center">
+        <div className="md:col-span-2 bg-forest text-white p-6 rounded-3xl relative overflow-hidden flex flex-col justify-center">
             <div className="relative z-10">
                 <h3 className="font-bold text-xl mb-4 flex items-center gap-2"><TrendingUp className="text-orange" /> تفاصيل الاشتراك</h3>
                 <div className="flex gap-12">
                     <div>
-                        <span className="block text-white/60 text-xs mb-1">حالة الحساب</span>
+                        <span className="block text-white/60 text-xs mb-1 font-bold">حالة الحساب</span>
                         <span className={`text-3xl font-black uppercase tracking-wider ${effectiveStatus === 'active' ? 'text-green-400' : 'text-orange'}`}>
                             {effectiveStatus === 'active' ? 'نشط' : 'منتهي'}
                         </span>
                     </div>
                     <div>
-                        <span className="block text-white/60 text-xs mb-1">تاريخ الانتهاء</span>
+                        <span className="block text-white/60 text-xs mb-1 font-bold">تاريخ الانتهاء</span>
                         <span className="text-xl font-bold">
                            {effectiveEndDate ? new Date(effectiveEndDate).toLocaleDateString('ar-EG') : '--'}
                         </span>
@@ -277,8 +391,8 @@ const ClientDetails: React.FC = () => {
         </div>
       </div>
 
-    <h2 className="text-xl font-bold text-forest mb-4 flex items-center gap-2"><FileText size={24} className="text-orange"/> أرشيف الأنظمة</h2>
-  <div className="space-y-4">
+    <h2 className="text-xl font-bold text-forest mb-4 flex items-center gap-2 font-tajawal"><FileText size={24} className="text-orange"/> أرشيف الأنظمة</h2>
+  <div className="space-y-4 font-tajawal">
     {plans.map(plan => (
         <div 
             key={plan.id} 
