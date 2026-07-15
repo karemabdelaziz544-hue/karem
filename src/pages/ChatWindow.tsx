@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useFamily } from '../contexts/FamilyContext';
 import { 
   Send, Check, CheckCircle, Paperclip, Mic, 
-  StopCircle, X, Image as ImageIcon, FileText, Loader2, ShieldCheck 
+  StopCircle, X, Image as ImageIcon, FileText, Loader2, ShieldCheck, Volume2 
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
@@ -30,6 +30,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ type }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
+  const [loadingAudio, setLoadingAudio] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let isMounted = true;
@@ -161,6 +163,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ type }) => {
     }
   };
 
+  // 🎵 تشغيل الصوت داخل المحادثة بدلاً من فتح تاب جديد
+  const handlePlayAudio = async (msgIdx: number, pathOrUrl: string) => {
+    if (!pathOrUrl) return;
+    const key = String(msgIdx);
+    if (audioUrls[key]) return;
+    setLoadingAudio(prev => ({ ...prev, [key]: true }));
+    try {
+      if (pathOrUrl.startsWith('http')) {
+        setAudioUrls(prev => ({ ...prev, [key]: pathOrUrl }));
+        return;
+      }
+      const { data, error } = await supabase.storage.from('chat-attachments').createSignedUrl(pathOrUrl, 3600);
+      if (error || !data) throw new Error('لا يمكن الوصول للملف الصوتي');
+      setAudioUrls(prev => ({ ...prev, [key]: data.signedUrl }));
+    } catch (err: any) { toast.error(err.message); }
+    finally { setLoadingAudio(prev => ({ ...prev, [key]: false })); }
+  };
+
   const startRecording = async () => {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -205,13 +225,32 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ type }) => {
                 {/* 👈 التعديل هنا: زر آمن لعرض المرفقات المشفرة */}
                 {msg.attachment_url && (
                    <div className="mt-3">
-                      <button 
-                        onClick={() => handleViewAttachment(msg.attachment_url)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors ${isMe ? 'bg-white/20 hover:bg-white/30 text-white' : 'bg-gray-100 hover:bg-gray-200 text-forest'}`}
-                      >
-                         {msg.attachment_type === 'image' ? <ImageIcon size={16}/> : msg.attachment_type === 'audio' ? <Mic size={16}/> : <FileText size={16}/>}
-                         فتح المرفق المشفر <ShieldCheck size={14} />
-                      </button>
+                      {msg.attachment_type === 'audio' ? (
+                        <div className="space-y-2">
+                          {audioUrls[String(idx)] ? (
+                            <audio controls controlsList="nodownload" className="w-full max-w-[280px] h-10 rounded-lg" style={{ filter: isMe ? 'invert(1) brightness(2) hue-rotate(180deg)' : 'none' }}>
+                              <source src={audioUrls[String(idx)]} />
+                            </audio>
+                          ) : (
+                            <button
+                              onClick={() => handlePlayAudio(idx, msg.attachment_url)}
+                              disabled={loadingAudio[String(idx)]}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors ${isMe ? 'bg-white/20 hover:bg-white/30 text-white' : 'bg-gray-100 hover:bg-gray-200 text-forest'}`}
+                            >
+                              {loadingAudio[String(idx)] ? <Loader2 size={16} className="animate-spin" /> : <Volume2 size={16} />}
+                              🎤 تشغيل التسجيل الصوتي
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={() => handleViewAttachment(msg.attachment_url)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors ${isMe ? 'bg-white/20 hover:bg-white/30 text-white' : 'bg-gray-100 hover:bg-gray-200 text-forest'}`}
+                        >
+                           {msg.attachment_type === 'image' ? <ImageIcon size={16}/> : <FileText size={16}/>}
+                           فتح المرفق المشفر <ShieldCheck size={14} />
+                        </button>
+                      )}
                    </div>
                 )}
 

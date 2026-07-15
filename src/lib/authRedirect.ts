@@ -31,7 +31,7 @@ export const fetchUserRole = async (userId: string, retries = 2): Promise<AppRol
     }
 
     if (isAppRole(data?.role)) {
-      return data.role;
+      return data.role as AppRole;
     }
 
     if (attempt < retries) {

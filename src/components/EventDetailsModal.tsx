@@ -49,12 +49,12 @@ const EventDetailsModal: React.FC<EventModalProps> = ({ event, isOpen, onClose }
     
     setUploading(true);
     const file = e.target.files[0];
-    const filePath = `booking-${user?.id}-${Date.now()}.${file.name.split('.').pop()}`;
+    const filePath = `events/${user?.id}/booking-${Date.now()}.${file.name.split('.').pop()}`;
 
     try {
         let proofPath = null;
         if (event.price > 0) {
-            const { error: uploadError } = await supabase.storage.from('payment-receipts').upload(filePath, file);
+            const { error: uploadError } = await supabase.storage.from('receipts').upload(filePath, file);
             if (uploadError) throw uploadError;
             // 👈 التعديل هنا: نحفظ المسار فقط بدون getPublicUrl
             proofPath = filePath;

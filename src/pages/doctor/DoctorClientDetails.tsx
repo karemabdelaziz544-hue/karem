@@ -5,10 +5,11 @@ import {
   ChevronRight, FileText, Activity, 
   Plus, Phone, Mail, HeartPulse, 
   AlertTriangle, Coffee, Moon, Droplet, 
-  CheckCircle2, Info
+  CheckCircle2, Info, Dumbbell
 } from 'lucide-react';
 import Avatar from '../../components/Avatar';
 import DoctorMedicalView from './DoctorMedicalView';
+import toast from 'react-hot-toast';
 
 import { Database } from '../../types/supabase';
 
@@ -80,6 +81,36 @@ const DoctorClientDetails: React.FC = () => {
     fetchClientData();
   }, [id, navigate]);
 
+  const handleActivatePlan = async (planId: string, planType: string) => {
+    try {
+      // 1. Set all other plans of the same type to completed
+      await supabase
+        .from('plans')
+        .update({ status: 'completed' })
+        .eq('user_id', id!)
+        .eq('plan_type', planType);
+
+      // 2. Set this plan to active
+      const { error } = await supabase
+        .from('plans')
+        .update({ status: 'active' })
+        .eq('id', planId);
+
+      if (error) throw error;
+      toast.success("تم تنشيط النظام بنجاح! 🚀");
+      
+      // Refresh plans
+      const { data: plans } = await supabase
+        .from('plans')
+        .select('*')
+        .eq('user_id', id!)
+        .order('created_at', { ascending: false });
+      setPastPlans(plans || []);
+    } catch (err: any) {
+      toast.error("فشل تنشيط النظام: " + err.message);
+    }
+  };
+
   if (loading) return <div className="p-20 text-center font-black text-forest animate-pulse">جاري جلب بيانات المريض...</div>;
 
   // 🚨 منطق التنبيه الذكي (Smart Alert Logic)
@@ -105,17 +136,37 @@ const DoctorClientDetails: React.FC = () => {
           <div>
             <h1 className="text-3xl font-black text-slate-800 mb-2">{client?.full_name}</h1>
             <div className="flex flex-wrap gap-4 text-sm font-bold text-slate-500">
-              <span className="flex items-center gap-2"><Phone size={16} className="text-forest"/> {client?.phone}</span>
-              <span className="flex items-center gap-2"><Mail size={16} className="text-forest"/> {client?.email}</span>
+              <span className="flex items-center gap-2"><Phone size={16} className="text-forest"/> {client?.phone || 'رقم غير مسجل'}</span>
+              <span className="flex items-center gap-2"><Mail size={16} className="text-forest"/> {client?.email || 'بريد غير مسجل'}</span>
+              <span className="bg-slate-50 text-slate-700 px-3 py-1 rounded-full text-xs font-bold border border-slate-100">
+                  النوع: {client?.gender === 'male' ? 'ذكر' : client?.gender === 'female' ? 'أنثى' : 'غير محدد'}
+              </span>
+              <span className="bg-slate-50 text-slate-700 px-3 py-1 rounded-full text-xs font-bold border border-slate-100">
+                  العمر: {client?.age ? `${client?.age} سنة` : 'غير محدد'}
+              </span>
+              <span className="bg-slate-50 text-slate-700 px-3 py-1 rounded-full text-xs font-bold border border-slate-100">
+                  الطول: {client?.height ? `${client?.height} سم` : 'غير محدد'}
+              </span>
+              <span className="bg-slate-50 text-slate-700 px-3 py-1 rounded-full text-xs font-bold border border-slate-100">
+                  الوزن: {client?.weight ? `${client?.weight} كجم` : 'غير محدد'}
+              </span>
             </div>
           </div>
         </div>
-        <button 
-          onClick={() => navigate(`/doctor-dashboard/plans/new/${client?.id}`)}
-          className="bg-orange text-white px-8 py-4 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-orange/20 hover:scale-105 transition-all shrink-0"
-        >
-          <Plus size={20} /> إضافة نظام جديد
-        </button>
+        <div className="flex flex-col md:flex-row gap-3">
+          <button 
+            onClick={() => navigate(`/doctor-dashboard/plans/new/${client?.id}?type=nutrition`)}
+            className="bg-orange text-white px-6 py-3 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-orange/20 hover:scale-105 transition-all shrink-0 text-sm"
+          >
+            <Plus size={18} /> إضافة نظام غذائي
+          </button>
+          <button 
+            onClick={() => navigate(`/doctor-dashboard/plans/new/${client?.id}?type=workout`)}
+            className="bg-slate-800 text-white px-6 py-3 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-slate-800/20 hover:scale-105 transition-all shrink-0 text-sm"
+          >
+            <Plus size={18} /> إضافة خطة تمارين
+          </button>
+        </div>
       </div>
 
       {/* Medical Content */}
@@ -144,39 +195,111 @@ const DoctorClientDetails: React.FC = () => {
           {/* سجل الأنظمة السابقة */}
           <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
             <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
-              <FileText size={20} className="text-orange" /> سجل الأنظمة
+              <FileText size={20} className="text-orange" /> سجل الأنظمة والخطط
             </h3>
-            <div className="space-y-4">
-              {pastPlans.length > 0 ? (
-                pastPlans.map((plan) => (
-                  <div 
-                    key={plan.id}
-                    className="p-4 rounded-2xl bg-slate-50 border border-slate-100 group hover:border-forest/30 transition-all cursor-pointer"
-                    onClick={() => navigate(`/doctor-dashboard/plans/edit/${plan.id}`)}
-                  >
-                    <div className="flex justify-between items-start mb-1">
-                      <div>
-                        <h4 className="font-black text-[13px] text-slate-800 group-hover:text-forest transition-colors">
-                          {plan.title || 'نظام غذائي وتدريبي'}
-                        </h4>
+
+
+            {/* Diet plans */}
+            <div className="mb-6">
+              <h4 className="text-xs font-black text-forest mb-3 flex items-center gap-1">
+                <FileText size={14} /> الأنظمة الغذائية
+              </h4>
+              <div className="space-y-3">
+                {pastPlans.filter(p => p.plan_type === 'nutrition' || !p.plan_type).length > 0 ? (
+                  pastPlans.filter(p => p.plan_type === 'nutrition' || !p.plan_type).map((plan) => (
+                    <div 
+                      key={plan.id}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer group flex justify-between items-center ${plan.status === 'active' ? 'bg-emerald-50/50 border-emerald-500 shadow-sm ring-1 ring-emerald-500/10' : 'bg-slate-50 border-slate-100 hover:border-forest/30'}`}
+                      onClick={() => navigate(`/doctor-dashboard/plans/edit/${plan.id}`)}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-black text-[13px] text-slate-800 group-hover:text-forest transition-colors">
+                            {plan.title}
+                          </h4>
+                          {plan.status === 'active' && (
+                            <span className="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full text-[9px] font-black">نشط ⚡</span>
+                          )}
+                        </div>
                         <p className="text-[10px] text-slate-400 font-bold mt-1">
                           {new Date(plan.created_at).toLocaleDateString('ar-EG')}
                         </p>
                       </div>
-                      <span className="text-[9px] bg-white px-2 py-1 rounded-lg border border-slate-100 font-black text-slate-400 group-hover:text-forest group-hover:border-forest/20 transition-all">
-                        مراجعة
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {plan.status !== 'active' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleActivatePlan(plan.id, plan.plan_type || 'nutrition');
+                            }}
+                            className="text-[9px] bg-forest/10 hover:bg-forest text-forest hover:text-white px-2.5 py-1 rounded-lg font-black transition-colors"
+                          >
+                            تنشيط 🚀
+                          </button>
+                        )}
+                        <span className="text-[9px] bg-white px-2 py-1 rounded-lg border border-slate-100 font-black text-slate-400 group-hover:text-forest group-hover:border-forest/20 transition-all">
+                          مراجعة
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8 border-2 border-dashed border-slate-100 rounded-[2rem]">
-                  <p className="text-[11px] font-bold text-slate-400 italic">لا يوجد سجل أنظمة لهذا البطل</p>
-                </div>
-              )}
+                  ))
+                ) : (
+                  <p className="text-[10px] text-slate-400 text-center py-3 bg-slate-50/50 rounded-xl border border-dashed border-slate-100">لا يوجد أنظمة غذائية سابقة</p>
+                )}
+              </div>
             </div>
-          </div>
+
+            {/* Workout plans */}
+            <div className="mb-6">
+              <h4 className="text-xs font-black text-forest mb-3 flex items-center gap-1">
+                <Dumbbell size={14} /> خطط التمارين
+              </h4>
+              <div className="space-y-3">
+                {pastPlans.filter(p => p.plan_type === 'workout').length > 0 ? (
+                  pastPlans.filter(p => p.plan_type === 'workout').map((plan) => (
+                    <div 
+                      key={plan.id}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer group flex justify-between items-center ${plan.status === 'active' ? 'bg-emerald-50/50 border-emerald-500 shadow-sm ring-1 ring-emerald-500/10' : 'bg-slate-50 border-slate-100 hover:border-forest/30'}`}
+                      onClick={() => navigate(`/doctor-dashboard/plans/edit/${plan.id}`)}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-black text-[13px] text-slate-800 group-hover:text-forest transition-colors">
+                            {plan.title}
+                          </h4>
+                          {plan.status === 'active' && (
+                            <span className="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full text-[9px] font-black">نشط ⚡</span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-bold mt-1">
+                          {new Date(plan.created_at).toLocaleDateString('ar-EG')}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {plan.status !== 'active' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleActivatePlan(plan.id, plan.plan_type || 'workout');
+                            }}
+                            className="text-[9px] bg-forest/10 hover:bg-forest text-forest hover:text-white px-2.5 py-1 rounded-lg font-black transition-colors"
+                          >
+                            تنشيط 🚀
+                          </button>
+                        )}
+                        <span className="text-[9px] bg-white px-2 py-1 rounded-lg border border-slate-100 font-black text-slate-400 group-hover:text-forest group-hover:border-forest/20 transition-all">
+                          مراجعة
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-[10px] text-slate-400 text-center py-3 bg-slate-50/50 rounded-xl border border-dashed border-slate-100">لا يوجد خطط تمارين سابقة</p>
+                )}
+            </div>
         </div>
+      </div>
+    </div>
 
         {/* العمود الرئيسي (السجلات الطبية InBody & Lab + Profiles) */}
         <div className="lg:col-span-2 space-y-6">
@@ -233,6 +356,29 @@ const DoctorClientDetails: React.FC = () => {
                     ) : <span className="text-slate-500 text-sm font-bold">لا يوجد</span>}
                   </div>
                 </div>
+                {/* 🌟 الحقول الطبية الجديدة المنسقة من الموبايل */}
+                <div className="bg-slate-50 p-4 rounded-2xl">
+                  <span className="text-xs text-slate-400 font-bold block mb-1">العمليات الجراحية السابقة</span>
+                  <p className="text-sm text-slate-700 font-black">{healthProfile.surgeries || 'لا توجد عمليات'}</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl">
+                  <span className="text-xs text-slate-400 font-bold block mb-1">الإصابات السابقة</span>
+                  <p className="text-sm text-slate-700 font-black">{healthProfile.injuries || 'لا توجد إصابات'}</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl md:col-span-2">
+                  <span className="text-xs text-slate-400 font-bold block mb-2">مشاكل الجهاز الهضمي والقولون</span>
+                  <div className="flex flex-wrap gap-2">
+                    {healthProfile.digestive_issues?.length ? (
+                      healthProfile.digestive_issues.map((issue: string) => (
+                        <span key={issue} className="bg-orange/10 text-orange px-3 py-1 rounded-lg text-xs font-bold">{issue}</span>
+                      ))
+                    ) : <span className="text-green-600 text-sm font-bold flex items-center gap-1"><CheckCircle2 size={16}/> لا توجد مشاكل هضمية</span>}
+                  </div>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl md:col-span-2">
+                  <span className="text-xs text-slate-400 font-bold block mb-1">الوضع الهرموني</span>
+                  <p className="text-sm text-slate-700 font-black">{healthProfile.hormonal_status || 'سليم ومستقر'}</p>
+                </div>
               </div>
             ) : (
               <div className="text-center py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
@@ -277,15 +423,48 @@ const DoctorClientDetails: React.FC = () => {
                     توتر: {lifestyleProfile.stress_level}
                   </p>
                 </div>
-                <div className="bg-slate-50 p-4 rounded-2xl md:col-span-3 grid grid-cols-2 gap-4">
+                {/* 🌟 الحقول الحياتية الجديدة المستمدة من الموبايل */}
+                <div className="bg-slate-50 p-4 rounded-2xl">
+                  <span className="text-xs text-slate-400 font-bold block mb-1">طبيعة العمل اليومي</span>
+                  <span className="text-slate-700 text-sm font-black">{lifestyleProfile.work_nature || '-'}</span>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl">
+                  <span className="text-xs text-slate-400 font-bold block mb-1">أكل عاطفي (Emotional Eating)</span>
+                  <span className={`text-sm font-black ${lifestyleProfile.emotional_eating ? 'text-red-600' : 'text-green-600'}`}>
+                    {lifestyleProfile.emotional_eating ? 'نعم يعاني' : 'لا'}
+                  </span>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl">
+                  <span className="text-xs text-slate-400 font-bold block mb-1">ثبات الوزن (Plateau)</span>
+                  <span className={`text-sm font-black ${lifestyleProfile.weight_plateau ? 'text-orange-600' : 'text-green-600'}`}>
+                    {lifestyleProfile.weight_plateau ? 'نعم يعاني من ثبات' : 'لا'}
+                  </span>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl">
+                  <span className="text-xs text-slate-400 font-bold block mb-1">معدل الكافيين اليومي</span>
+                  <span className="text-slate-700 text-sm font-black">{lifestyleProfile.caffeine_intake || '-'}</span>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl">
+                  <span className="text-xs text-slate-400 font-bold block mb-1">مستوى الشهية</span>
+                  <span className="text-slate-700 text-sm font-black">{lifestyleProfile.appetite_level || '-'}</span>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <span className="text-xs text-green-600 font-bold block mb-1">أطعمة مفضلة</span>
-                    <span className="text-slate-700 text-sm font-bold bg-white px-2 py-1 rounded">{lifestyleProfile.favorite_foods || '-'}</span>
+                    <span className="text-slate-700 text-sm font-bold bg-white px-2 py-1 rounded block border border-slate-100">{lifestyleProfile.favorite_foods || '-'}</span>
                   </div>
                   <div>
                     <span className="text-xs text-red-500 font-bold block mb-1">أطعمة غير مفضلة (أو ممنوعة)</span>
-                    <span className="text-slate-700 text-sm font-bold bg-white px-2 py-1 rounded">{lifestyleProfile.disliked_foods || '-'}</span>
+                    <span className="text-slate-700 text-sm font-bold bg-white px-2 py-1 rounded block border border-slate-100">{lifestyleProfile.disliked_foods || '-'}</span>
                   </div>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl md:col-span-3">
+                  <span className="text-xs text-slate-400 font-bold block mb-1">تاريخ الأنظمة الغذائية السابقة</span>
+                  <p className="text-sm text-slate-700 font-bold bg-white p-3 rounded border border-slate-100">{lifestyleProfile.diet_history || 'لا يوجد تاريخ سابق'}</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl md:col-span-3">
+                  <span className="text-xs text-slate-400 font-bold block mb-1">المكملات الغذائية المستخدمة</span>
+                  <p className="text-sm text-slate-700 font-bold bg-white p-3 rounded border border-slate-100">{lifestyleProfile.supplements || 'لا يوجد مكملات'}</p>
                 </div>
               </div>
             ) : (

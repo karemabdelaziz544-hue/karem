@@ -41,7 +41,7 @@ const AdminPayments: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('payment_requests')
-        .select('*, profiles(full_name, email, avatar_url, phone)')
+        .select('*, profiles!payment_requests_user_id_fkey(full_name, email, avatar_url, phone)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -76,41 +76,17 @@ const AdminPayments: React.FC = () => {
 
     try {
       if (newStatus === 'approved') {
-        const newExpiryDate = addDays(new Date(), 30).toISOString();
-        const keepIds = Array.isArray(request.renewal_metadata?.keep_member_ids) 
-                        ? request.renewal_metadata.keep_member_ids 
-                        : [];
-
-        await supabase.from('profiles').update({ 
-          subscription_status: 'active',
-          subscription_end_date: newExpiryDate 
-        }).eq('id', request.user_id);
-
-        const { data: allSubAccounts } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('manager_id', request.user_id);
-
-        if (allSubAccounts && allSubAccounts.length > 0) {
-          for (const account of allSubAccounts) {
-            const shouldBeActive = keepIds.includes(account.id);
-            await supabase
-              .from('profiles')
-              .update({ 
-                subscription_status: shouldBeActive ? 'active' : 'expired',
-                subscription_end_date: shouldBeActive ? newExpiryDate : null
-              })
-              .eq('id', account.id);
-          }
-        }
+        const { error: approveErr } = await supabase.rpc('admin_approve_payment_request', {
+          p_request_id: request.id,
+        });
+        if (approveErr) throw approveErr;
+      } else {
+        const { error: rejectErr } = await supabase.rpc('admin_reject_payment_request', {
+          p_request_id: request.id,
+          p_reason: 'تم رفض طلب الدفع من قبل الإدارة. يرجى التحقق من عملية التحويل وإعادة المحاولة.',
+        });
+        if (rejectErr) throw rejectErr;
       }
-
-      const { error: requestErr } = await supabase
-        .from('payment_requests')
-        .update({ status: newStatus })
-        .eq('id', request.id);
-
-      if (requestErr) throw requestErr;
 
       toast.success("تمت العملية بنجاح وتحديث الحسابات");
       fetchRequests();

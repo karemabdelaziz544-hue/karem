@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { Search, User, ChevronLeft, Activity } from 'lucide-react';
 
+import Avatar from '../../components/Avatar';
+
 const DoctorClients: React.FC = () => {
   const [clients, setClients] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -57,9 +59,7 @@ const DoctorClients: React.FC = () => {
 onClick={() => navigate(`/doctor-dashboard/client/${client.id}`)}              className="bg-white p-5 rounded-[2rem] border border-slate-100 flex items-center justify-between group cursor-pointer hover:shadow-xl transition-all"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300">
-                  {client.avatar_url ? <img src={client.avatar_url} loading="lazy" className="w-full h-full object-cover rounded-2xl" /> : <User size={24}/>}
-                </div>
+                <Avatar src={client.avatar_url} name={client.full_name} size="lg" />
                 <div>
                   <h3 className="font-black text-slate-800 text-sm">{client.full_name}</h3>
                   <span className={`text-[9px] font-bold ${client.subscription_status === 'active' ? 'text-forest' : 'text-slate-400'}`}>

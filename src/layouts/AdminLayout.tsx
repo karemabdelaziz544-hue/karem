@@ -6,7 +6,7 @@ import Logo from '../components/Logo';
 import { 
   Users, FileText, LayoutDashboard, LogOut, MessageSquare, 
   CreditCard, Settings, Calendar, Ticket, Tag, TrendingUp, 
-  Quote, Layout, Menu, X 
+  Quote, Layout, Menu, X, Dumbbell 
 } from 'lucide-react';
 import NotificationsMenu from '../components/NotificationsMenu';
 
@@ -33,6 +33,7 @@ const AdminLayout: React.FC = () => {
     { name: 'العملاء', icon: Users, path: '/admin/clients' },
     { name: 'متابعة الالتزام', icon: TrendingUp, path: '/admin/performance' },
     { name: 'محادثات العملاء', icon: MessageSquare, path: '/admin/chat' },
+    { name: 'مكتبة التمارين', icon: Dumbbell, path: '/admin/exercises' },
     { name: 'إدارة الآراء', icon: Quote, path: '/admin/feedback' },
     { name: 'طلبات الدفع', icon: CreditCard, path: '/admin/transactions' },
     { name: 'إدارة الفعاليات', icon: Calendar, path: '/admin/events' },

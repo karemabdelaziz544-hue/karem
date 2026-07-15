@@ -43,7 +43,11 @@ const QuickRenewModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         plan_type: 'renewal',
         status: 'pending',
         receipt_url: fileName, // لا نستخدم getPublicUrl
-        renewal_metadata: { type: 'quick_renew', member_count: familyMembers.length }
+        renewal_metadata: { 
+          type: 'quick_renew', 
+          member_count: familyMembers.length,
+          sub_count: familyMembers.filter(m => m.manager_id === currentProfile.id).length
+        }
       }]);
 
       if (error) {

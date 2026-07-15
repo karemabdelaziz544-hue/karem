@@ -69,6 +69,7 @@ const RenewSubscriptionModal: React.FC<{ onClose: () => void; currentPlan: strin
         status: 'pending',
         receipt_url: fileName, // 👈 التعديل
         renewal_metadata: {
+          sub_count: PLANS[selectedPlan].capacity,
           keep_member_ids: selectedMembersToKeep
         }
       }]);

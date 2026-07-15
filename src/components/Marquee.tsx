@@ -21,7 +21,7 @@ const Marquee: React.FC = () => {
           from: "-50%"
         }}
       >
-        <span className="text-2xl md:text-3xl font-bold text-sage/80 font-tajawal tracking-wider px-4">
+        <span className="text-2xl md:text-3xl font-bold text-sage/80 font-thmanyah tracking-wider px-4">
           {duplicatedText}
         </span>
       </motion.div>

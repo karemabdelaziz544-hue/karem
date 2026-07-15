@@ -1,8 +1,9 @@
 import React from 'react';
 import { User } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface AvatarProps {
-  src?: string | null;      // رابط الصورة (ممكن يكون فاضي)
+  src?: string | null;      // رابط الصورة أو مسار التخزين
   name?: string | null;     // الاسم (عشان ناخد أول حرف لو مفيش صورة)
   size?: 'sm' | 'md' | 'lg' | 'xl'; // أحجام مختلفة
   className?: string;       // أي تنسيق إضافي
@@ -20,9 +21,14 @@ const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', className = '' 
 
   // لو فيه صورة، اعرضها
   if (src) {
+    // لو كانت الصورة مسار فقط وليست رابط كامل، نقوم بتوليد الرابط العام لها
+    const resolvedSrc = src.startsWith('http') 
+      ? src 
+      : supabase.storage.from('avatars').getPublicUrl(src).data.publicUrl;
+
     return (
       <img 
-        src={src} 
+        src={resolvedSrc} 
         alt={name || 'User'} 
         className={`rounded-full object-cover border border-gray-100 shadow-sm ${sizeClasses[size]} ${className}`}
       />

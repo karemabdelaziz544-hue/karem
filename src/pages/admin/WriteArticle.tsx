@@ -10,7 +10,7 @@ import { useAuth } from '../../contexts/AuthContext';
 const WriteArticle: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [formData, setFormData] = useState({ title: '', excerpt: '', content: '', image_url: '' });
+  const [formData, setFormData] = useState({ title: '', excerpt: '', content: '', image_url: '', category: '' });
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -65,7 +65,30 @@ const WriteArticle: React.FC = () => {
                 <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
             </div>
 
-            <Input label="عنوان المقال" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} required />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input label="عنوان المقال" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} required />
+                <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">تصنيف المقال</label>
+                    <select 
+                        className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:border-orange outline-none h-[50px] font-bold text-gray-700"
+                        value={formData.category}
+                        onChange={e => setFormData({...formData, category: e.target.value})}
+                        required
+                    >
+                        <option value="">اختر التصنيف...</option>
+                        <option value="التغذية">التغذية</option>
+                        <option value="إنقاص الوزن">إنقاص الوزن</option>
+                        <option value="زيادة الوزن">زيادة الوزن</option>
+                        <option value="الأطفال">الأطفال</option>
+                        <option value="الحمل">الحمل</option>
+                        <option value="الرياضة">الرياضة</option>
+                        <option value="الصحة العامة">الصحة العامة</option>
+                        <option value="السكري">السكري</option>
+                        <option value="ضغط الدم">ضغط الدم</option>
+                    </select>
+                </div>
+            </div>
+
             <Input label="مقتطف قصير (يظهر في القائمة)" value={formData.excerpt} onChange={e => setFormData({...formData, excerpt: e.target.value})} required />
             
             <div>

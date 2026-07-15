@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Droplet, Footprints, Plus, Minus, Check } from 'lucide-react';
+import { Droplet, Plus, Minus, Check, Flame } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -8,154 +8,180 @@ interface Props {
 }
 
 const HabitTracker: React.FC<Props> = ({ userId }) => {
-  const [waterCups, setWaterCups] = useState(0);
-  const [steps, setSteps] = useState(0);
+  const [waterIntake, setWaterIntake] = useState(0); // value stored in Liters in DB
+  const [caloriesConsumed, setCaloriesConsumed] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // هدف يومي افتراضي (ممكن نخليه ييجي من الداتابيز بعدين)
-  const WATER_GOAL = 8;
-  const STEPS_GOAL = 6000;
+  const WATER_GOAL_LITERS = 3.0; // 3 Liters daily goal
+  const CALORIES_GOAL = 2000;    // 2000 Calories daily goal
 
   useEffect(() => {
-    fetchTodayHabits();
+    fetchTodayLogs();
   }, [userId]);
 
-  const fetchTodayHabits = async () => {
+  const fetchTodayLogs = async () => {
+    setLoading(true);
     const today = new Date().toISOString().split('T')[0];
     
-    // نجيب سجل النهاردة
-    const { data, error } = await supabase
-      .from('daily_habits')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('record_date', today)
-.maybeSingle(); // 👈 الحل: لو مفيش داتا هيرجع null بدل ما يضرب error
-    if (data) {
-        setWaterCups(data.water_cups ?? 0);
-        setSteps(data.steps_count ?? 0);
+    try {
+      const { data, error } = await supabase
+        .from('daily_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('date', today)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setWaterIntake(Number(data.water_intake) || 0);
+        setCaloriesConsumed(Number(data.calories_consumed) || 0);
+      } else {
+        setWaterIntake(0);
+        setCaloriesConsumed(0);
+      }
+    } catch (err) {
+      console.error("Error fetching habits from daily_logs:", err);
+      toast.error("فشل في تحميل التقدم اليومي");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const updateHabit = async (type: 'water' | 'steps', value: number) => {
+  const updateHabitsLog = async (type: 'water' | 'calories', value: number) => {
     const today = new Date().toISOString().split('T')[0];
     setSaving(true);
 
     try {
-        const updates: Record<string, string | number> = {
-            user_id: userId,
-            record_date: today,
-        };
+      const targetValue = Math.max(0, value);
+      
+      const updates = {
+        user_id: userId,
+        date: today,
+        water_intake: type === 'water' ? targetValue : waterIntake,
+        calories_consumed: type === 'calories' ? targetValue : caloriesConsumed,
+        updated_at: new Date().toISOString()
+      };
 
-        if (type === 'water') {
-            updates.water_cups = value;
-            setWaterCups(value);
-        } else {
-            updates.steps_count = value;
-            setSteps(value);
-        }
+      if (type === 'water') setWaterIntake(targetValue);
+      if (type === 'calories') setCaloriesConsumed(targetValue);
 
-        // Upsert: لو موجود حدثه، لو مش موجود أنشئه
-        const { error } = await supabase.from('daily_habits').upsert(updates as any, { onConflict: 'user_id, record_date' });
+      const { error } = await supabase
+        .from('daily_logs')
+        .upsert(updates, { onConflict: 'user_id, date' });
         
-        if (error) throw error;
-        // toast.success("تم الحفظ", { duration: 1000 }); // اختياري عشان ميبقاش مزعج
+      if (error) throw error;
 
     } catch (err) {
-        console.error(err);
-        toast.error("فشل حفظ التقدم");
+      console.error("Error updating daily_logs:", err);
+      toast.error("فشل في حفظ البيانات");
+      fetchTodayLogs(); // Reset from DB in case of error
     } finally {
-        setSaving(false);
+      setSaving(false);
     }
   };
 
-  if (loading) return <div className="h-40 bg-gray-100 rounded-3xl animate-pulse"></div>;
+  if (loading) {
+    return <div className="h-44 bg-slate-50 border border-slate-100 rounded-3xl animate-pulse flex items-center justify-center text-slate-400 font-bold font-tajawal">جاري تحميل المؤشرات اليومية...</div>;
+  }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        {/* 💧 تتبع المياه */}
-        <div className="bg-white p-6 rounded-3xl border border-blue-100 shadow-sm relative overflow-hidden">
-            <div className="flex justify-between items-start mb-4">
-                <div>
-                    <h3 className="font-bold text-blue-900 flex items-center gap-2">
-                        <Droplet className="text-blue-500 fill-blue-500" size={20}/> شرب المياه
-                    </h3>
-                    <p className="text-xs text-blue-400 font-bold mt-1">الهدف: {WATER_GOAL} أكواب</p>
-                </div>
-                <div className="text-2xl font-black text-blue-600">{waterCups}</div>
-            </div>
-
-            {/* رسم الكوبيات */}
-            <div className="flex flex-wrap gap-2 mb-2">
-                {Array.from({ length: WATER_GOAL }).map((_, i) => (
-                    <button
-                        key={i}
-                        onClick={() => updateHabit('water', i + 1 === waterCups ? i : i + 1)} // ضغطة تزود، ضغطة على الاخير تنقص
-                        className={`w-8 h-10 rounded-b-xl border-2 transition-all ${
-                            i < waterCups 
-                            ? 'bg-blue-500 border-blue-500 shadow-md shadow-blue-200' 
-                            : 'bg-blue-50 border-blue-100 hover:bg-blue-100'
-                        }`}
-                    />
-                ))}
-            </div>
-            {waterCups >= WATER_GOAL && (
-                <div className="text-xs text-green-600 font-bold flex items-center gap-1 animate-in fade-in">
-                    <Check size={12}/> ممتاز! حققت هدفك اليوم
-                </div>
-            )}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 font-tajawal text-right">
+      {/* 💧 تتبع شرب المياه */}
+      <div className="bg-gradient-to-br from-white to-blue-50/20 p-6 rounded-[2rem] border border-blue-100/50 shadow-sm relative overflow-hidden">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h3 className="font-bold text-blue-955 flex items-center gap-2">
+              <Droplet className="text-blue-500 fill-blue-500" size={22}/> شرب المياه
+            </h3>
+            <p className="text-xs text-blue-400 font-bold mt-1">الهدف اليومي: {WATER_GOAL_LITERS} لتر</p>
+          </div>
+          <div className="text-2xl font-black text-blue-600">
+            {waterIntake.toFixed(2)} <span className="text-xs font-bold text-slate-400">لتر</span>
+          </div>
         </div>
 
-        {/* 🏃 تتبع الخطوات */}
-        <div className="bg-white p-6 rounded-3xl border border-orange/10 shadow-sm relative overflow-hidden">
-             <div className="flex justify-between items-start mb-6">
-                <div>
-                    <h3 className="font-bold text-forest flex items-center gap-2">
-                        <Footprints className="text-orange" size={20}/> الخطوات
-                    </h3>
-                    <p className="text-xs text-gray-400 font-bold mt-1">الهدف: {STEPS_GOAL} خطوة</p>
-                </div>
-                {/* Progress Circle بسيط */}
-                <div className="relative w-12 h-12 flex items-center justify-center">
-                    <svg className="w-full h-full transform -rotate-90">
-                        <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-gray-100" />
-                        <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="transparent" 
-                            className={steps >= STEPS_GOAL ? "text-green-500" : "text-orange"}
-                            strokeDasharray={125}
-                            strokeDashoffset={125 - (Math.min(steps, STEPS_GOAL) / STEPS_GOAL) * 125}
-                        />
-                    </svg>
-                    <span className="absolute text-[8px] font-bold">{Math.round((steps/STEPS_GOAL)*100)}%</span>
-                </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-                <button 
-                    onClick={() => updateHabit('steps', Math.max(0, steps - 500))}
-                    className="w-10 h-10 rounded-xl bg-gray-50 text-gray-500 hover:bg-red-50 hover:text-red-500 flex items-center justify-center transition-colors"
-                >
-                    <Minus size={18} />
-                </button>
-                
-                <div className="flex-1 relative">
-                    <input 
-                        type="number" 
-                        value={steps}
-                        onChange={(e) => updateHabit('steps', Number(e.target.value))}
-                        className="w-full text-center font-black text-xl bg-transparent border-b-2 border-gray-100 focus:border-orange outline-none pb-1"
-                    />
-                    <span className="block text-center text-[10px] text-gray-400">خطوة</span>
-                </div>
-
-                <button 
-                    onClick={() => updateHabit('steps', steps + 500)}
-                    className="w-10 h-10 rounded-xl bg-forest text-white hover:bg-forest/90 flex items-center justify-center shadow-lg shadow-forest/20 transition-colors"
-                >
-                    <Plus size={18} />
-                </button>
-            </div>
+        {/* progress bar */}
+        <div className="w-full bg-blue-50 rounded-full h-3 mb-6 overflow-hidden">
+          <div 
+            className="bg-blue-500 h-3 rounded-full transition-all duration-500 shadow-inner"
+            style={{ width: `${Math.min((waterIntake / WATER_GOAL_LITERS) * 100, 100)}%` }}
+          />
         </div>
+
+        <div className="flex items-center gap-3">
+          <button 
+            disabled={saving}
+            onClick={() => updateHabitsLog('water', waterIntake - 0.25)}
+            className="w-1/3 py-3 rounded-2xl bg-blue-50 text-blue-600 hover:bg-blue-100 font-black text-xs transition-all active:scale-95 disabled:opacity-50"
+          >
+            -250 مل
+          </button>
+          <button 
+            disabled={saving}
+            onClick={() => updateHabitsLog('water', waterIntake + 0.25)}
+            className="flex-1 py-3 rounded-2xl bg-blue-600 text-white hover:bg-blue-700 font-black text-xs transition-all active:scale-95 shadow-md shadow-blue-200 disabled:opacity-50"
+          >
+             شرب كوب مياه (250 مل) 💧
+          </button>
+        </div>
+
+        {waterIntake >= WATER_GOAL_LITERS && (
+          <div className="mt-4 text-xs text-green-600 font-black flex items-center gap-1 animate-in slide-in-from-bottom-2">
+            <Check size={14} className="bg-green-100 rounded-full p-0.5" /> أحسنت، لقد حققت الهدف المائي لليوم!
+          </div>
+        )}
+      </div>
+
+      {/* 🔥 تتبع السعرات الحرارية */}
+      <div className="bg-gradient-to-br from-white to-orange/5 p-6 rounded-[2rem] border border-orange/10 shadow-sm relative overflow-hidden">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+              <Flame className="text-orange fill-orange" size={22}/> السعرات الحرارية
+            </h3>
+            <p className="text-xs text-slate-400 font-bold mt-1">الهدف اليومي: {CALORIES_GOAL} سعرة</p>
+          </div>
+          <div className="text-2xl font-black text-orange">
+            {caloriesConsumed} <span className="text-xs font-bold text-slate-400">سعرة</span>
+          </div>
+        </div>
+
+        {/* progress bar */}
+        <div className="w-full bg-slate-100 rounded-full h-3 mb-6 overflow-hidden">
+          <div 
+            className="bg-orange h-3 rounded-full transition-all duration-500 shadow-inner"
+            style={{ width: `${Math.min((caloriesConsumed / CALORIES_GOAL) * 100, 100)}%` }}
+          />
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button 
+            disabled={saving}
+            onClick={() => updateHabitsLog('calories', caloriesConsumed - 100)}
+            className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-500 hover:bg-red-50 hover:text-red-500 flex items-center justify-center transition-all font-black text-sm active:scale-95 disabled:opacity-50"
+          >
+            -100
+          </button>
+          
+          <input 
+            type="number" 
+            value={caloriesConsumed}
+            disabled={saving}
+            onChange={(e) => updateHabitsLog('calories', Number(e.target.value))}
+            className="flex-1 text-center font-black text-xl bg-slate-50/50 border-2 border-transparent focus:border-orange focus:bg-white rounded-2xl p-2 outline-none transition-all"
+          />
+
+          <button 
+            disabled={saving}
+            onClick={() => updateHabitsLog('calories', caloriesConsumed + 100)}
+            className="w-12 h-12 rounded-2xl bg-forest text-white hover:bg-forest/90 flex items-center justify-center transition-all font-black text-sm active:scale-95 shadow-md shadow-forest/10 disabled:opacity-50"
+          >
+            +100
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

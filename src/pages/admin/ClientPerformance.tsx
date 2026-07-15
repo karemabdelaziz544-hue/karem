@@ -7,6 +7,7 @@ import {
     Award, AlertCircle, Users, Zap, UserMinus, UserCheck, ClipboardList
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import Avatar from '../../components/Avatar';
 
 const ClientPerformance: React.FC = () => {
   const [clients, setClients] = useState<any[]>([]);
@@ -19,30 +20,52 @@ const ClientPerformance: React.FC = () => {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
+      const getLocalDateString = (d = new Date()) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      const today = getLocalDateString();
+
       const { data: profiles } = await supabase
         .from('profiles')
         .select(`id, full_name, avatar_url, phone, subscription_status, plans (id, status, created_at)`)
         .eq('role', 'client');
 
+      // جلب سجلات إنجاز اليوم من daily_task_logs بدلاً من is_completed الثابت
+      const { data: todayLogs } = await supabase
+        .from('daily_task_logs')
+        .select('user_id, task_id, is_completed')
+        .eq('log_date', today);
+
+      // جلب إجمالي التاسكات لكل خطة
       const { data: allTasks } = await supabase
         .from('plan_tasks')
-        .select('plan_id, is_completed');
-      
+        .select('plan_id, id');
+
       const formatted = profiles?.map((p: any) => {
-        const latestPlan = p.plans?.sort((a: any, b: any) => 
+        const latestPlan = p.plans?.sort((a: any, b: any) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )[0];
 
-        const pTasks = allTasks?.filter(t => t.plan_id === latestPlan?.id) || [];
-        const done = pTasks.filter(t => t.is_completed).length;
-        const total = pTasks.length;
+        const planTaskIds = new Set(
+          allTasks?.filter(t => t.plan_id === latestPlan?.id).map(t => t.id) || []
+        );
+        const total = planTaskIds.size;
+
+        // عدد المهام التي أنجزها هذا العميل اليوم فقط
+        const done = todayLogs?.filter(
+          l => l.user_id === p.id && l.is_completed && planTaskIds.has(l.task_id)
+        ).length ?? 0;
+
         const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-        return { 
-          ...p, 
-          activePlan: latestPlan, 
-          doneCount: done, 
-          totalCount: total, 
+        return {
+          ...p,
+          activePlan: latestPlan,
+          doneCount: done,
+          totalCount: total,
           percentage: pct,
           isSubscribed: p.subscription_status === 'active'
         };
@@ -122,9 +145,7 @@ const ClientPerformance: React.FC = () => {
             {/* مؤشر الحالة الجانبي */}
             <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${client.isSubscribed ? (client.activePlan ? 'bg-forest' : 'bg-amber-500') : 'bg-slate-200'}`}></div>
 
-            <div className="w-16 h-16 rounded-[1.5rem] bg-slate-50 overflow-hidden shrink-0 border-2 border-slate-50 shadow-inner group-hover:border-forest/20 transition-all">
-              {client.avatar_url ? <img src={client.avatar_url} loading="lazy" className="w-full h-full object-cover" /> : <User className="w-full h-full p-4 text-slate-200" />}
-            </div>
+            <Avatar src={client.avatar_url} name={client.full_name} size="lg" className="shrink-0" />
 
             <div className="flex-1 text-right">
               <div className="flex items-center gap-2">
@@ -183,9 +204,7 @@ const DetailModal = ({ selectedClient, onClose, navigate }: any) => (
     <div className="bg-white w-full max-w-lg rounded-[3rem] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
       <div className="relative px-8 py-10 border-b border-slate-50 text-center">
         <button onClick={onClose} className="absolute left-8 top-8 p-2 bg-slate-50 rounded-full text-slate-400 hover:text-orange transition-all"><X size={22}/></button>
-        <div className="w-24 h-24 bg-white rounded-[2rem] mx-auto mb-5 overflow-hidden border-4 border-slate-50 shadow-xl">
-           {selectedClient.avatar_url ? <img src={selectedClient.avatar_url} className="w-full h-full object-cover" /> : <User className="w-full h-full p-8 text-slate-200" />}
-        </div>
+         <Avatar src={selectedClient.avatar_url} name={selectedClient.full_name} size="xl" className="mx-auto mb-5" />
         <h2 className="text-2xl font-black text-slate-800">{selectedClient.full_name}</h2>
         <div className="flex justify-center gap-2 mt-3">
           <span className={`px-4 py-1 rounded-full text-[9px] font-black italic ${selectedClient.isSubscribed ? 'bg-forest/10 text-forest' : 'bg-rose-50 text-rose-500'}`}>

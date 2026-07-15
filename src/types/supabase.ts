@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -36,6 +36,7 @@ export type Database = {
       articles: {
         Row: {
           author_id: string | null
+          category: string | null
           content: string
           created_at: string
           excerpt: string | null
@@ -45,6 +46,7 @@ export type Database = {
         }
         Insert: {
           author_id?: string | null
+          category?: string | null
           content: string
           created_at?: string
           excerpt?: string | null
@@ -54,6 +56,7 @@ export type Database = {
         }
         Update: {
           author_id?: string | null
+          category?: string | null
           content?: string
           created_at?: string
           excerpt?: string | null
@@ -255,6 +258,48 @@ export type Database = {
           }
         ]
       }
+      daily_task_logs: {
+        Row: {
+          id: string
+          user_id: string
+          task_id: string
+          log_date: string
+          is_completed: boolean | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          task_id: string
+          log_date?: string
+          is_completed?: boolean | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          task_id?: string
+          log_date?: string
+          is_completed?: boolean | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_task_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_task_logs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "plan_tasks"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       daily_smart_plans: {
         Row: {
           created_at: string | null
@@ -302,6 +347,7 @@ export type Database = {
       }
       event_bookings: {
         Row: {
+          attended: boolean | null
           created_at: string
           event_id: string
           id: string
@@ -310,6 +356,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attended?: boolean | null
           created_at?: string
           event_id: string
           id?: string
@@ -318,6 +365,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attended?: boolean | null
           created_at?: string
           event_id?: string
           id?: string
@@ -351,36 +399,51 @@ export type Database = {
       }
       events: {
         Row: {
+          category: string | null
           created_at: string
           description: string | null
+          duration: string | null
           event_date: string
           id: string
           image_url: string | null
+          is_visible: boolean | null
           location: string | null
           max_capacity: number | null
           price: number | null
+          registration_deadline: string | null
+          speakers: Json | null
           title: string
         }
         Insert: {
+          category?: string | null
           created_at?: string
           description?: string | null
+          duration?: string | null
           event_date: string
           id?: string
           image_url?: string | null
+          is_visible?: boolean | null
           location?: string | null
           max_capacity?: number | null
           price?: number | null
+          registration_deadline?: string | null
+          speakers?: Json | null
           title: string
         }
         Update: {
+          category?: string | null
           created_at?: string
           description?: string | null
+          duration?: string | null
           event_date?: string
           id?: string
           image_url?: string | null
+          is_visible?: boolean | null
           location?: string | null
           max_capacity?: number | null
           price?: number | null
+          registration_deadline?: string | null
+          speakers?: Json | null
           title?: string
         }
         Relationships: []
@@ -601,6 +664,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          inquiry_id: string | null
           is_read: boolean | null
           receiver_id: string
           recipient_type: string | null
@@ -613,6 +677,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          inquiry_id?: string | null
           is_read?: boolean | null
           receiver_id: string
           recipient_type?: string | null
@@ -625,6 +690,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          inquiry_id?: string | null
           is_read?: boolean | null
           receiver_id?: string
           recipient_type?: string | null
@@ -786,6 +852,7 @@ export type Database = {
           day_number: number | null
           id: string
           is_completed: boolean | null
+          metadata: any | null
           order_index: number | null
           plan_id: string
           task_type: string | null
@@ -797,6 +864,7 @@ export type Database = {
           day_number?: number | null
           id?: string
           is_completed?: boolean | null
+          metadata?: any | null
           order_index?: number | null
           plan_id: string
           task_type?: string | null
@@ -808,6 +876,7 @@ export type Database = {
           day_number?: number | null
           id?: string
           is_completed?: boolean | null
+          metadata?: any | null
           order_index?: number | null
           plan_id?: string
           task_type?: string | null
@@ -826,6 +895,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          plan_type: string
           start_date: string | null
           status: string | null
           title: string
@@ -834,6 +904,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          plan_type?: string
           start_date?: string | null
           status?: string | null
           title: string
@@ -842,6 +913,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          plan_type?: string
           start_date?: string | null
           status?: string | null
           title?: string
@@ -1073,6 +1145,44 @@ export type Database = {
         }
         Relationships: []
       }
+      inquiries: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          category: "nutrition" | "meals" | "weight" | "symptoms" | "exercises" | "other"
+          status: "open" | "under_review" | "replied" | "closed"
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          category: "nutrition" | "meals" | "weight" | "symptoms" | "exercises" | "other"
+          status?: "open" | "under_review" | "replied" | "closed"
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          category?: "nutrition" | "meals" | "weight" | "symptoms" | "exercises" | "other"
+          status?: "open" | "under_review" | "replied" | "closed"
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inquiries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       testimonials: {
         Row: {
           content: string
@@ -1207,6 +1317,31 @@ export type Database = {
       renew_subscription: {
         Args: { target_user_id: string }
         Returns: undefined
+      }
+      admin_update_client_subscription: {
+        Args: {
+          p_client_id: string
+          p_new_end_date: string
+          p_new_status: string
+          p_new_quota?: number
+        }
+        Returns: undefined
+      }
+      admin_approve_payment_request: {
+        Args: {
+          p_request_id: string
+          p_confirmed_amount?: number
+          p_admin_notes?: string
+        }
+        Returns: unknown
+      }
+      admin_reject_payment_request: {
+        Args: {
+          p_request_id: string
+          p_reason: string
+          p_admin_notes?: string
+        }
+        Returns: unknown
       }
     }
     Enums: {

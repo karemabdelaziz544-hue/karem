@@ -13,21 +13,18 @@ import ClientLayout from './layouts/ClientLayout';
 import DoctorLayout from './layouts/DoctorLayout';
 import Header from './components/Header';
 import Footer from './components/Footer';
-import WhatsAppBtn from './components/WhatsAppBtn';
+import VisitorChatWidget from './components/VisitorChatWidget';
 import Preloader from './components/Preloader';
-import Hero from './components/Hero';
-import Marquee from './components/Marquee';
-import Features from './components/Features';
-import HowItWorks from './components/HowItWorks';
-import Testimonials from './components/Testimonials';
-import Pricing from './components/Pricing';
-import Events from './components/Events';
-import FAQ from './components/FAQ';
 import MainAccountOnly from './components/MainAccountOnly';
 
 // 🚀 2. التحميل الذكي (Lazy Loading) لباقي الصفحات (تحميل عند الحاجة فقط)
+const HomePage = React.lazy(() => import('./pages/HomePage'));
 const BlogPage = React.lazy(() => import('./components/BlogPage'));
 const BlogPost = React.lazy(() => import('./components/BlogPost'));
+const AboutPage = React.lazy(() => import('./pages/AboutPage'));
+const PricingPage = React.lazy(() => import('./pages/PricingPage'));
+const EventsPage = React.lazy(() => import('./pages/EventsPage'));
+const HowItWorksPage = React.lazy(() => import('./pages/HowItWorksPage'));
 const Login = React.lazy(() => import('./pages/Login'));
 const Signup = React.lazy(() => import('./pages/Signup'));
 
@@ -65,6 +62,7 @@ const ManagePromoCodes = React.lazy(() => import('./pages/admin/ManagePromoCodes
 const ManageFeedback = React.lazy(() => import('./pages/admin/ManageFeedback'));
 const ClientPerformance = React.lazy(() => import('./pages/admin/ClientPerformance'));
 const HomeEditor = React.lazy(() => import('./pages/admin/HomeEditor'));
+const ExerciseLibrary = React.lazy(() => import('./pages/admin/ExerciseLibrary'));
 
 
 const RedirectIfAuthenticated = ({ children }: { children: React.ReactNode }) => {
@@ -92,18 +90,6 @@ const ScrollToTop = () => {
   return null;
 };
 
-const HomePage = () => (
-  <>
-    <Hero />
-    <Marquee />
-    <Features />
-    <HowItWorks />
-    <Testimonials />
-    <Pricing />
-    <Events />
-    <FAQ />
-  </>
-);
 
 const AppContent: React.FC = () => {
   const location = useLocation();
@@ -112,7 +98,7 @@ const AppContent: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-cream selection:bg-orange selection:text-white" dir="rtl">
+    <div className="min-h-screen bg-surface selection:bg-primary-fixed selection:text-on-primary-fixed font-thmanyah" dir="rtl">
       <ScrollToTop />
       {!hideHeaderFooter && <Header />}
       
@@ -125,6 +111,10 @@ const AppContent: React.FC = () => {
               <Route path="/" element={<HomePage />} />
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/blog/:id" element={<BlogPost />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/events" element={<EventsPage />} />
+              <Route path="/how-it-works" element={<HowItWorksPage />} />
               <Route path="/login" element={<RedirectIfAuthenticated><Login /></RedirectIfAuthenticated>} />
               <Route path="/signup" element={<RedirectIfAuthenticated><Signup /></RedirectIfAuthenticated>} />
 
@@ -141,42 +131,44 @@ const AppContent: React.FC = () => {
                 </Route>
               </Route>
 
-              {/* نظام الطبيب */}
-              <Route element={<ProtectedRoute allowedRoles={['doctor']} />}>
-                <Route path="/doctor-dashboard" element={<DoctorLayout />}>
-                  <Route index element={<DoctorDashboard />} />
-                  <Route path="clients" element={<DoctorClients />} />
-                  <Route path="client/:id" element={<DoctorClientDetails />} />
-                  <Route path="performance" element={<DoctorPerformance />} />
-                  <Route path="chat" element={<DoctorChat />} />
-                  <Route path="plans/new/:userId" element={<CreatePlan />} />
-                  <Route path="plans/edit/:planId" element={<EditPlan />} />
-                </Route>
-              </Route>
-
-              {/* نظام الإدارة */}
-              <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-                <Route path="/admin" element={<AdminLayout />}>
-                  <Route index element={<AdminOverview />} />
-                  <Route path="clients" element={<ClientsPage />} />
-                  <Route path="performance" element={<ClientPerformance />} />
-                  <Route path="clients/:id" element={<ClientDetails />} />
-                  <Route path="plans" element={<PlansPage />} />
-                  <Route path="plans/new/:userId" element={<CreatePlan />} />
-                  <Route path="plans/edit/:planId" element={<EditPlan />} />
-                  <Route path="chat" element={<AdminChat />} />
-                  <Route path="transactions" element={<TransactionReview />} />
-                  <Route path="feedback" element={<ManageFeedback />} />
-                  <Route path="events" element={<ManageEvents />} />
-                  <Route path="home-editor" element={<HomeEditor />} />
-                  <Route path="events/:id" element={<EventDetailsPage />} />
-                  <Route path="event-bookings" element={<EventBookings />} />
-                  <Route path="blog" element={<ManageBlog />} />
-                  <Route path="blog/new" element={<WriteArticle />} />
-                  <Route path="promocodes" element={<ManagePromoCodes />} />
-                  <Route path="settings" element={<Settings />} />
-                </Route>
-              </Route>
+               {/* نظام الطبيب */}
+               <Route element={<ProtectedRoute allowedRoles={['doctor']} />}>
+                 <Route path="/doctor-dashboard" element={<DoctorLayout />}>
+                   <Route index element={<DoctorDashboard />} />
+                   <Route path="clients" element={<DoctorClients />} />
+                   <Route path="client/:id" element={<DoctorClientDetails />} />
+                   <Route path="performance" element={<DoctorPerformance />} />
+                   <Route path="chat" element={<DoctorChat />} />
+                   <Route path="plans/new/:userId" element={<CreatePlan />} />
+                   <Route path="plans/edit/:planId" element={<EditPlan />} />
+                   <Route path="exercises" element={<ExerciseLibrary />} />
+                 </Route>
+               </Route>
+ 
+               {/* نظام الإدارة */}
+               <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                 <Route path="/admin" element={<AdminLayout />}>
+                   <Route index element={<AdminOverview />} />
+                   <Route path="clients" element={<ClientsPage />} />
+                   <Route path="performance" element={<ClientPerformance />} />
+                   <Route path="clients/:id" element={<ClientDetails />} />
+                   <Route path="plans" element={<PlansPage />} />
+                   <Route path="plans/new/:userId" element={<CreatePlan />} />
+                   <Route path="plans/edit/:planId" element={<EditPlan />} />
+                   <Route path="chat" element={<AdminChat />} />
+                   <Route path="transactions" element={<TransactionReview />} />
+                   <Route path="feedback" element={<ManageFeedback />} />
+                   <Route path="events" element={<ManageEvents />} />
+                   <Route path="home-editor" element={<HomeEditor />} />
+                   <Route path="events/:id" element={<EventDetailsPage />} />
+                   <Route path="event-bookings" element={<EventBookings />} />
+                   <Route path="blog" element={<ManageBlog />} />
+                   <Route path="blog/new" element={<WriteArticle />} />
+                   <Route path="promocodes" element={<ManagePromoCodes />} />
+                   <Route path="settings" element={<Settings />} />
+                   <Route path="exercises" element={<ExerciseLibrary />} />
+                 </Route>
+               </Route>
 
               {/* صفحة 404 بديلة */}
               <Route path="*" element={<Navigate to="/" replace />} />
@@ -186,7 +178,7 @@ const AppContent: React.FC = () => {
       </main>
 
       {!hideHeaderFooter && <Footer />}
-      {!hideHeaderFooter && <WhatsAppBtn />}
+      {!hideHeaderFooter && <VisitorChatWidget />}
     </div>
   );
 };

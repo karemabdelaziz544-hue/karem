@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase'; // 👈 أضفنا استدعاء supabase
 import toast from 'react-hot-toast'; // 👈 أضفنا التنبيهات
-import { LayoutDashboard, Users, ClipboardList, MessageSquare, Menu, X, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardList, MessageSquare, Menu, X, LogOut, Dumbbell } from 'lucide-react';
 
 const DoctorLayout: React.FC = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -27,6 +27,7 @@ const DoctorLayout: React.FC = () => {
     { label: 'الرئيسية', icon: <LayoutDashboard size={20} />, path: '/doctor-dashboard' },
     { label: 'أبطالي', icon: <Users size={20} />, path: '/doctor-dashboard/clients' },
     { label: 'المتابعة اليومية', icon: <ClipboardList size={20} />, path: '/doctor-dashboard/performance' },
+    { label: 'مكتبة التمارين', icon: <Dumbbell size={20} />, path: '/doctor-dashboard/exercises' },
     { label: 'المحادثات', icon: <MessageSquare size={20} />, path: '/doctor-dashboard/chat' },
   ];  
 

@@ -6,6 +6,8 @@ import Loader2 from '../../components/Preloader';
 import { useNavigate } from 'react-router-dom';
 import type { Profile } from '../../types';
 
+import Avatar from '../../components/Avatar';
+
 const AdminOverview: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -171,10 +173,8 @@ const AdminOverview: React.FC = () => {
             ) : (
               expiringSoon.map((client) => (
                 <div key={client.id} className="p-3 rounded-2xl bg-red-50 border border-red-100 flex items-center gap-3 group">
-                  <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 border border-red-200">
-                    {client.avatar_url ? <img src={client.avatar_url} loading="lazy" className="w-full h-full object-cover rounded-full" /> : <Users size={16} className="text-red-300" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
+                   <Avatar src={client.avatar_url} name={client.full_name} size="md" className="shrink-0" />
+                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold text-slate-800 truncate">{client.full_name}</p>
                     <p className="text-[9px] text-red-600 font-bold">ينتهي: {client.subscription_end_date ? new Date(client.subscription_end_date).toLocaleDateString('ar-EG') : '-'}</p>
                   </div>

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { 
-    Search, User, ChevronLeft, RefreshCw, 
+    Search, User, ChevronLeft, ChevronRight, RefreshCw, 
     CheckCircle, Calendar, Filter, Award, AlertCircle, X, Loader2
 } from 'lucide-react';
 
 import { Database } from '../../types/supabase';
+
+import Avatar from '../../components/Avatar';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type PlanTask = Database['public']['Tables']['plan_tasks']['Row'];
@@ -28,36 +30,55 @@ const DoctorPerformance: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 1. جلب العملاء مع تفاصيل الخطط بالكامل للحصول على تاريخ الإنشاء
+      const getLocalDateString = (d = new Date()) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      const today = getLocalDateString();
+
+      // 1. جلب العملاء مع تفاصيل الخطط
       const { data: profiles } = await supabase
         .from('profiles')
         .select(`id, full_name, avatar_url, plans (id, created_at)`)
         .eq('role', 'client')
         .eq('subscription_status', 'active');
 
-      // 2. جلب حالة المهام للمقارنة
+      // 2. جلب سجلات إنجاز اليوم فقط
+      const { data: todayLogs } = await supabase
+        .from('daily_task_logs')
+        .select('user_id, task_id, is_completed')
+        .eq('log_date', today);
+
+      // 3. جلب إجمالي التاسكات
       const { data: allTasks } = await supabase
         .from('plan_tasks')
-        .select('plan_id, is_completed');
-      
+        .select('plan_id, id');
+
       const formatted = profiles?.map((p) => {
-        // ترتيب الخطط للحصول على الأحدث
-        const latestPlan = p.plans?.sort((a, b) => 
+        const latestPlan = p.plans?.sort((a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )[0];
 
-        const pTasks = allTasks?.filter(t => t.plan_id === latestPlan?.id) || [];
-        const done = pTasks.filter(t => t.is_completed).length;
-        const total = pTasks.length;
+        const planTaskIds = new Set(
+          allTasks?.filter(t => t.plan_id === latestPlan?.id).map(t => t.id) || []
+        );
+        const total = planTaskIds.size;
+
+        const done = todayLogs?.filter(
+          l => l.user_id === p.id && l.is_completed && planTaskIds.has(l.task_id)
+        ).length ?? 0;
+
         const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-        return { 
-          ...p, 
-          percentage: pct, 
-          totalTasks: total, 
+        return {
+          ...p,
+          percentage: pct,
+          totalTasks: total,
           doneTasks: done,
           activePlanId: latestPlan?.id,
-          activePlanCreatedAt: latestPlan?.created_at // تخزين التاريخ لاستخدامه في المودال
+          activePlanCreatedAt: latestPlan?.created_at
         };
       });
 
@@ -113,9 +134,7 @@ const DoctorPerformance: React.FC = () => {
             onClick={() => setSelectedClient(client)}
             className="bg-white p-5 rounded-[2.5rem] border border-slate-100 flex items-center gap-4 group hover:shadow-lg transition-all cursor-pointer active:scale-[0.99]"
           >
-            <div className="w-14 h-14 bg-slate-50 rounded-2xl overflow-hidden shrink-0 border border-slate-100">
-               {client.avatar_url ? <img src={client.avatar_url} loading="lazy" className="w-full h-full object-cover" /> : <User className="w-full h-full p-3 text-slate-200" />}
-            </div>
+            <Avatar src={client.avatar_url} name={client.full_name} size="lg" className="shrink-0" />
             <div className="flex-1">
                <h3 className="font-black text-slate-800 text-sm">{client.full_name}</h3>
                <div className="flex items-center gap-2 mt-1">
@@ -147,6 +166,7 @@ const DoctorPerformance: React.FC = () => {
             
             <div className="p-8 overflow-y-auto max-h-[50vh] bg-slate-50/30">
               <PerformanceDetailView 
+                clientId={selectedClient.id}
                 planId={selectedClient.activePlanId} 
                 planCreatedAt={selectedClient.activePlanCreatedAt} 
               />
@@ -168,74 +188,138 @@ const DoctorPerformance: React.FC = () => {
 };
 
 /* مكون عرض تفاصيل مهام "رقم اليوم الحالي" المحدث */
-const PerformanceDetailView = ({ planId, planCreatedAt }: { planId?: string, planCreatedAt?: string }) => {
+const PerformanceDetailView = ({ clientId, planId, planCreatedAt }: { clientId?: string, planId?: string, planCreatedAt?: string }) => {
   const [tasks, setTasks] = useState<PlanTask[]>([]);
+  const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [currentDayNum, setCurrentDayNum] = useState(1);
+  const [selectedDayNum, setSelectedDayNum] = useState(1);
+  const [calculatedTodayNum, setCalculatedTodayNum] = useState(1);
+
+  // حساب اليوم الحالي تلقائياً مرة واحدة عند الفتح
+  useEffect(() => {
+    if (planCreatedAt) {
+      const start = new Date(planCreatedAt);
+      const today = new Date();
+      const diffTime = Math.abs(today.getTime() - start.getTime());
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      const dayNum = diffDays + 1;
+      setCalculatedTodayNum(dayNum);
+      setSelectedDayNum(dayNum);
+    }
+  }, [planCreatedAt]);
 
   useEffect(() => {
-    const fetchTodayTasks = async () => {
-      if (!planId || !planCreatedAt) { setLoading(false); return; }
-      
+    const fetchTasksAndLogs = async () => {
+      if (!planId || !planCreatedAt || !clientId) { setLoading(false); return; }
+      setLoading(true);
       try {
-        // حساب رقم اليوم بناءً على تاريخ إنشاء الخطة
-        const start = new Date(planCreatedAt);
-        const today = new Date();
-        const diffTime = Math.abs(today.getTime() - start.getTime());
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        const dayNumber = diffDays + 1; 
-        
-        setCurrentDayNum(dayNumber);
-        const dayString = `اليوم ${dayNumber}`;
+        const dayString = `اليوم ${selectedDayNum}`;
 
-        const { data } = await supabase
+        // 1. جلب مهام هذا اليوم المحدد
+        const { data: tasksData } = await supabase
           .from('plan_tasks')
           .select('*')
           .eq('plan_id', planId)
           .eq('day_name', dayString) 
           .order('order_index', { ascending: true });
-        
-        setTasks(data || []);
+
+        // 2. حساب التاريخ المقابل لليوم المحدد
+        const start = new Date(planCreatedAt);
+        const targetDate = new Date(start.getTime() + (selectedDayNum - 1) * 24 * 60 * 60 * 1000);
+        const year = targetDate.getFullYear();
+        const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+        const day = String(targetDate.getDate()).padStart(2, '0');
+        const targetDateStr = `${year}-${month}-${day}`;
+
+        // 3. جلب سجلات الالتزام لهذا اليوم المحدد
+        const { data: logsData } = await supabase
+          .from('daily_task_logs')
+          .select('task_id, is_completed')
+          .eq('user_id', clientId)
+          .eq('log_date', targetDateStr);
+
+        const completedIds = new Set(
+          logsData?.filter(l => l.is_completed).map(l => l.task_id) || []
+        );
+
+        setTasks(tasksData || []);
+        setCompletedTaskIds(completedIds);
       } catch (err) {
-        console.error("Error calculating day:", err);
+        console.error("Error loading tasks and logs:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchTodayTasks();
-  }, [planId, planCreatedAt]);
+    fetchTasksAndLogs();
+  }, [clientId, planId, planCreatedAt, selectedDayNum]);
+
+  const handlePrevDay = () => {
+    if (selectedDayNum > 1) {
+      setSelectedDayNum(prev => prev - 1);
+    }
+  };
+
+  const handleNextDay = () => {
+    setSelectedDayNum(prev => prev + 1);
+  };
 
   if (loading) return <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-forest" /></div>;
   
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between px-2 mb-2 border-b border-slate-100 pb-3">
-        <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
-          <Calendar size={14} className="text-forest" /> مهام الخطة: {`اليوم ${currentDayNum}`}
+      {/* شريط التحكم باليوم */}
+      <div className="flex items-center justify-between bg-slate-100/50 p-2.5 rounded-2xl border border-slate-200/50 mb-2">
+        <button 
+          onClick={handlePrevDay} 
+          disabled={selectedDayNum <= 1}
+          className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+        >
+          <ChevronRight size={18} />
+        </button>
+        <div className="text-center">
+          <p className="text-xs font-black text-slate-800">اليوم {selectedDayNum}</p>
+          <p className="text-[9px] text-slate-400 font-bold mt-0.5">
+            {selectedDayNum === calculatedTodayNum ? "اليوم الحالي (اليوم)" : "تاريخ سابق / لاحق"}
+          </p>
+        </div>
+        <button 
+          onClick={handleNextDay} 
+          className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500 transition-all"
+        >
+          <ChevronLeft size={18} />
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between px-2 border-b border-slate-100 pb-3">
+        <h4 className="text-xs font-black text-slate-600 flex items-center gap-1.5">
+          <Calendar size={13} className="text-forest" /> المهام اليومية المسجلة
         </h4>
-        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-lg">متابعة حية</span>
+        <span className="text-[9px] font-bold text-forest bg-forest/5 px-2 py-0.5 rounded-lg">التزام العميل</span>
       </div>
 
       {tasks.length > 0 ? (
-        tasks.map((task) => (
-          <div key={task.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center ${task.is_completed ? 'bg-forest text-white' : 'bg-slate-50 text-slate-200 border border-slate-100'}`}>
-                <CheckCircle size={14} fill={task.is_completed ? "currentColor" : "none"} />
+        tasks.map((task) => {
+          const isDone = completedTaskIds.has(task.id);
+          return (
+            <div key={task.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isDone ? 'bg-forest text-white' : 'bg-slate-50 text-slate-200 border border-slate-100'}`}>
+                  <CheckCircle size={14} fill={isDone ? "currentColor" : "none"} />
+                </div>
+                <span className={`text-xs font-bold ${isDone ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
+                  {task.content}
+                </span>
               </div>
-              <span className={`text-xs font-bold ${task.is_completed ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
-                {task.content}
+              <span className={`text-[8px] font-black px-2 py-1 rounded-md ${task.task_type === 'workout' ? 'bg-blue-50 text-blue-500' : 'bg-orange/10 text-orange'}`}>
+                {task.task_type === 'workout' ? 'تمرين' : 'وجبة'}
               </span>
             </div>
-            <span className={`text-[8px] font-black px-2 py-1 rounded-md ${task.task_type === 'workout' ? 'bg-blue-50 text-blue-500' : 'bg-orange/10 text-orange'}`}>
-              {task.task_type === 'workout' ? 'تمرين' : 'وجبة'}
-            </span>
-          </div>
-        ))
+          );
+        })
       ) : (
         <div className="text-center py-10 bg-white rounded-3xl border border-dashed border-slate-200">
-          <p className="text-slate-400 font-bold italic text-xs">لا توجد مهام مسجلة لـ {`اليوم ${currentDayNum}`}</p>
-          <p className="text-[10px] text-slate-300 mt-2 italic">يتم الفلترة بناءً على تاريخ استلام العميل للنظام</p>
+          <p className="text-slate-400 font-bold italic text-xs">لا توجد مهام مسجلة لـ {`اليوم ${selectedDayNum}`}</p>
+          <p className="text-[10px] text-slate-300 mt-2 italic">يمكنك الانتقال بين الأيام باستخدام أزرار التنقل بالأعلى</p>
         </div>
       )}
     </div>

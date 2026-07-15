@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { 
   Phone, ChevronRight, PlusCircle, FileText, Clock, CheckCircle, 
   Activity, TrendingUp, Users, Link as LinkIcon, Edit2, Save, X, Calendar,
-  HeartPulse, AlertTriangle, Coffee, Moon, CheckCircle2, Droplet, Info
+  HeartPulse, AlertTriangle, Coffee, Moon, CheckCircle2, Droplet, Info, Dumbbell
 } from 'lucide-react';
 import Button from '../../components/Button';
 import PlanDetailsModal from '../../components/PlanDetailsModal';
@@ -89,6 +89,32 @@ const ClientDetails: React.FC = () => {
     if (id) fetchData();
   }, [id]);
 
+  const handleActivatePlan = async (planId: string, planType: string) => {
+    try {
+      // 1. Set all other plans of the same type to completed
+      await supabase
+        .from('plans')
+        .update({ status: 'completed' })
+        .eq('user_id', id!)
+        .eq('plan_type', planType);
+
+      // 2. Set this plan to active
+      const { error } = await supabase
+        .from('plans')
+        .update({ status: 'active' })
+        .eq('id', planId);
+
+      if (error) throw error;
+      toast.success("تم تنشيط النظام بنجاح! 🚀");
+      
+      // Refresh plans
+      const { data: clientPlans } = await supabase.from('plans').select('*, plan_tasks(count)').eq('user_id', id!).order('created_at', { ascending: false });
+      setPlans(clientPlans || []);
+    } catch (err: any) {
+      toast.error("فشل تنشيط النظام: " + err.message);
+    }
+  };
+
   const handleSaveDate = async () => {
     if (!newDate) return;
     setSavingDate(true);
@@ -98,14 +124,11 @@ const ClientDetails: React.FC = () => {
       const now = new Date();
       const newStatus = targetDate > now ? 'active' : 'expired';
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          subscription_end_date: newDate,
-          subscription_status: newStatus,
-          is_locked: newStatus === 'expired'
-        })
-        .eq('id', client!.id);
+      const { error } = await supabase.rpc('admin_update_client_subscription', {
+        p_client_id: client!.id,
+        p_new_end_date: newDate,
+        p_new_status: newStatus
+      });
 
       if (error) throw error;
 
@@ -155,7 +178,19 @@ const ClientDetails: React.FC = () => {
            <div>
              <h1 className="text-3xl font-extrabold text-forest mb-2">{client.full_name}</h1>
              <div className="flex flex-wrap gap-4 text-gray-600 font-medium text-sm">
-               {!manager && <span className="flex items-center gap-2"><Phone size={16}/> {client.phone || 'رقم غير مسجل'}</span>}
+                {!manager && <span className="flex items-center gap-2"><Phone size={16}/> {client.phone || 'رقم غير مسجل'}</span>}
+                <span className="bg-gray-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold border border-gray-200">
+                    النوع: {client.gender === 'male' ? 'ذكر' : client.gender === 'female' ? 'أنثى' : 'غير محدد'}
+                </span>
+                <span className="bg-gray-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold border border-gray-200">
+                    العمر: {client.age ? `${client.age} سنة` : 'غير محدد'}
+                </span>
+                <span className="bg-gray-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold border border-gray-200">
+                    الطول: {client.height ? `${client.height} سم` : 'غير محدد'}
+                </span>
+                <span className="bg-gray-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold border border-gray-200">
+                    الوزن: {client.weight ? `${client.weight} كجم` : 'غير محدد'}
+                </span>
                
                {manager ? (
                    <div 
@@ -210,9 +245,14 @@ const ClientDetails: React.FC = () => {
            </div>
         </div>
         
-        <Button className="gap-2 shadow-lg" onClick={() => navigate(`/admin/plans/new/${client.id}`)}>
-          <PlusCircle size={20} /> إضافة نظام غذائي جديد
-        </Button>
+        <div className="flex gap-3">
+          <Button className="gap-2 shadow-lg" onClick={() => navigate(`/admin/plans/new/${client.id}?type=nutrition`)}>
+            <PlusCircle size={20} /> إضافة نظام غذائي جديد
+          </Button>
+          <Button className="gap-2 shadow-lg bg-slate-800 hover:bg-slate-700 text-white" onClick={() => navigate(`/admin/plans/new/${client.id}?type=workout`)}>
+            <PlusCircle size={20} /> إضافة خطة تمارين جديدة
+          </Button>
+        </div>
       </div>
 
       {/* 🚨 التنبيه الذكي (Smart Alert) */}
@@ -391,25 +431,95 @@ const ClientDetails: React.FC = () => {
         </div>
       </div>
 
-    <h2 className="text-xl font-bold text-forest mb-4 flex items-center gap-2 font-tajawal"><FileText size={24} className="text-orange"/> أرشيف الأنظمة</h2>
-  <div className="space-y-4 font-tajawal">
-    {plans.map(plan => (
-        <div 
-            key={plan.id} 
-            onClick={() => { setSelectedPlanId(plan.id); setIsModalOpen(true); }}
-            className="bg-white p-5 rounded-2xl border border-gray-200 flex justify-between items-center cursor-pointer hover:border-orange hover:shadow-md transition-all group"
-        >
-            <div>
-                <h3 className="font-bold text-lg text-gray-800 group-hover:text-orange transition-colors">{plan.title}</h3>
-                <p className="text-sm text-gray-400">{new Date(plan.created_at).toLocaleDateString('ar-EG')}</p>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold">{plan.plan_tasks[0]?.count || 0} مهمة</span>
-                <ChevronRight size={16} className="text-gray-300 group-hover:text-orange" />
-            </div>
+
+
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 font-tajawal mb-6">
+      {/* Diet Plans List */}
+      <div>
+        <h2 className="text-xl font-bold text-forest mb-4 flex items-center gap-2"><FileText size={24} className="text-orange"/> أرشيف الأنظمة الغذائية</h2>
+        <div className="space-y-4">
+          {plans.filter(p => p.plan_type === 'nutrition' || !p.plan_type).length === 0 ? (
+            <p className="text-gray-400 text-sm font-bold bg-white p-5 rounded-2xl border border-gray-100 text-center">لا توجد أنظمة غذائية سابقة.</p>
+          ) : (
+            plans.filter(p => p.plan_type === 'nutrition' || !p.plan_type).map(plan => (
+              <div 
+                  key={plan.id} 
+                  onClick={() => { setSelectedPlanId(plan.id); setIsModalOpen(true); }}
+                  className={`bg-white p-5 rounded-2xl border flex justify-between items-center cursor-pointer transition-all group ${plan.status === 'active' ? 'border-emerald-500 shadow-md ring-1 ring-emerald-500/30' : 'border-gray-200 hover:border-orange hover:shadow-md'}`}
+              >
+                  <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-lg text-gray-800 group-hover:text-orange transition-colors">{plan.title}</h3>
+                        {plan.status === 'active' && (
+                          <span className="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full text-[10px] font-black">نشط حالياً ⚡</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-400">{new Date(plan.created_at).toLocaleDateString('ar-EG')}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                      {plan.status !== 'active' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleActivatePlan(plan.id, plan.plan_type || 'nutrition');
+                          }}
+                          className="text-[10px] bg-orange/10 hover:bg-orange text-orange hover:text-white px-3 py-1.5 rounded-xl font-black transition-colors"
+                        >
+                          تنشيط 🚀
+                        </button>
+                      )}
+                      <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold">{plan.plan_tasks[0]?.count || 0} مهمة</span>
+                      <ChevronRight size={16} className="text-gray-300 group-hover:text-orange" />
+                  </div>
+              </div>
+            ))
+          )}
         </div>
-    ))}
-  </div>
+      </div>
+
+      {/* Workout Plans List */}
+      <div>
+        <h2 className="text-xl font-bold text-forest mb-4 flex items-center gap-2"><Dumbbell size={24} className="text-orange"/> أرشيف خطط التمارين</h2>
+        <div className="space-y-4">
+          {plans.filter(p => p.plan_type === 'workout').length === 0 ? (
+            <p className="text-gray-400 text-sm font-bold bg-white p-5 rounded-2xl border border-gray-100 text-center">لا توجد خطط تمارين سابقة.</p>
+          ) : (
+            plans.filter(p => p.plan_type === 'workout').map(plan => (
+              <div 
+                  key={plan.id} 
+                  onClick={() => { setSelectedPlanId(plan.id); setIsModalOpen(true); }}
+                  className={`bg-white p-5 rounded-2xl border flex justify-between items-center cursor-pointer transition-all group ${plan.status === 'active' ? 'border-emerald-500 shadow-md ring-1 ring-emerald-500/30' : 'border-gray-200 hover:border-orange hover:shadow-md'}`}
+              >
+                  <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-lg text-gray-800 group-hover:text-orange transition-colors">{plan.title}</h3>
+                        {plan.status === 'active' && (
+                          <span className="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full text-[10px] font-black">نشط حالياً ⚡</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-400">{new Date(plan.created_at).toLocaleDateString('ar-EG')}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                      {plan.status !== 'active' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleActivatePlan(plan.id, plan.plan_type || 'workout');
+                          }}
+                          className="text-[10px] bg-orange/10 hover:bg-orange text-orange hover:text-white px-3 py-1.5 rounded-xl font-black transition-colors"
+                        >
+                          تنشيط 🚀
+                        </button>
+                      )}
+                      <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold">{plan.plan_tasks[0]?.count || 0} تمرين</span>
+                      <ChevronRight size={16} className="text-gray-300 group-hover:text-orange" />
+                  </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
 
   <PlanDetailsModal 
     isOpen={isModalOpen} 

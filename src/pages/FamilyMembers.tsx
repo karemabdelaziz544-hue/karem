@@ -8,6 +8,8 @@ import Input from '../components/Input';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal'; // 👈 استيراد المودال
 
+import Avatar from '../components/Avatar';
+
 const FamilyMembers: React.FC = () => {
   const { familyMembers, refreshFamily, currentProfile, switchProfile } = useFamily();
   const navigate = useNavigate();
@@ -156,9 +158,7 @@ const FamilyMembers: React.FC = () => {
                     className={`relative p-5 rounded-2xl border transition-all ${isActive ? 'bg-forest text-white border-forest shadow-lg scale-[1.02]' : 'bg-white border-gray-100 hover:border-orange/30 hover:shadow-md'}`}
                 >
                     <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${isActive ? 'bg-white text-forest' : 'bg-forest/10 text-forest'}`}>
-                            {member.avatar_url ? <img src={member.avatar_url} loading="lazy" alt="" className="w-full h-full rounded-full object-cover"/> : <User/>}
-                        </div>
+                         <Avatar src={member.avatar_url} name={member.full_name} size="lg" />
                         <div>
                             <h3 className={`font-bold text-lg ${isActive ? 'text-white' : 'text-gray-800'}`}>
                                 {member.full_name} 
