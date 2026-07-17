@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { 
-  Check, X, Sparkles, Users, HelpCircle, ArrowLeft, 
-  Heart, Shield, Eye, Award as Ribbon, ChevronRight, 
+import {
+  Check, X, Sparkles, Users, HelpCircle, ArrowLeft,
+  Heart, Shield, Eye, Award as Ribbon, ChevronRight,
   ChevronLeft, Plus, Minus, Smartphone, CheckCircle,
   TrendingUp, Activity, Lock, Key, Calendar
 } from 'lucide-react';
@@ -45,7 +45,7 @@ const PricingPage: React.FC = () => {
 
   return (
     <div className="bg-[#fbfdf7] text-forest min-h-screen pt-20 overflow-x-hidden font-thmanyah selection:bg-forest selection:text-white" dir="rtl">
-      
+
       {/* SECTION 1: Hero */}
       <section className="relative py-20 md:py-32 px-6 md:px-12 overflow-hidden bg-gradient-to-b from-[#f5f8f2] to-[#fbfdf7] text-center">
         <div className="absolute inset-0 z-0 opacity-40">
@@ -83,8 +83,8 @@ const PricingPage: React.FC = () => {
           </div>
 
           <div className="pt-6">
-            <a 
-              href="#pricing-card" 
+            <a
+              href="#pricing-card"
               className="px-10 py-4 bg-forest text-white rounded-full font-black text-sm hover:bg-orange shadow-lg shadow-forest/15 hover:scale-105 active:scale-95 transition-all duration-300 inline-block"
             >
               ابدأ الآن
@@ -96,8 +96,8 @@ const PricingPage: React.FC = () => {
       {/* SECTION 2: Main Pricing Card */}
       <section id="pricing-card" className="py-12 px-6 md:px-12 bg-white relative">
         <div className="max-w-xl mx-auto">
-          
-          <motion.div 
+
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
@@ -111,7 +111,7 @@ const PricingPage: React.FC = () => {
 
             <div className="space-y-6">
               <h2 className="text-2xl md:text-3xl font-black text-forest">الباقة الأساسية</h2>
-              
+
               <div className="py-4">
                 <span className="text-5xl md:text-6xl font-black text-forest">٥٠٠ جنيه</span>
                 <span className="text-xs font-black text-forest/50 block mt-2">شهرياً</span>
@@ -146,12 +146,12 @@ const PricingPage: React.FC = () => {
               </div>
 
               <div className="pt-8">
-                <Link 
-                  to="/signup" 
+                <a
+                  href="/#download"
                   className="w-full md:w-auto px-16 py-5 text-base md:text-lg bg-forest text-white rounded-full font-black hover:bg-orange shadow-xl shadow-forest/15 hover:scale-105 active:scale-95 transition-all duration-300 inline-block text-center"
                 >
-                  اشترك الآن
-                </Link>
+                  تحميل التطبيق الآن
+                </a>
               </div>
             </div>
           </motion.div>
@@ -203,7 +203,7 @@ const PricingPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-            
+
             {/* Card 1 */}
             <motion.div {...fadeInUp} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm text-right space-y-3 hover:-translate-y-1 transition-transform">
               <div className="w-10 h-10 rounded-2xl bg-forest/5 flex items-center justify-center text-forest">
@@ -265,7 +265,7 @@ const PricingPage: React.FC = () => {
           <div className="space-y-4">
             {faqItems.map((item, idx) => (
               <div key={idx} className="bg-[#fbfdf7] rounded-3xl border border-gray-100 shadow-sm overflow-hidden transition-all duration-300">
-                <button 
+                <button
                   onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
                   className="w-full p-6 text-right font-black text-base md:text-lg flex justify-between items-center text-forest hover:text-orange transition-colors focus:outline-none"
                 >
@@ -274,7 +274,7 @@ const PricingPage: React.FC = () => {
                     {openFaq === idx ? <Minus size={18} /> : <Plus size={18} />}
                   </div>
                 </button>
-                
+
                 <AnimatePresence>
                   {openFaq === idx && (
                     <motion.div
@@ -299,16 +299,16 @@ const PricingPage: React.FC = () => {
       <section className="py-24 px-6 md:px-12 bg-white">
         <div className="max-w-5xl mx-auto bg-gradient-to-r from-forest to-[#003828] text-white rounded-[3.5rem] p-10 md:p-20 text-center relative overflow-hidden shadow-2xl">
           <div className="absolute top-[-20%] left-[-10%] w-[30rem] h-[30rem] bg-emerald-700/30 rounded-full filter blur-3xl z-0" />
-          
+
           <div className="max-w-3xl mx-auto space-y-8 relative z-10 text-center">
             <h2 className="text-4xl md:text-6xl font-black leading-[1.6]">ابدأ رحلة حياة صحية لكل أفراد أسرتك</h2>
             <p className="text-base text-white/80 font-medium leading-relaxed max-w-2xl mx-auto">
               Healix لا تقدم نظاماً غذائياً فقط... بل تساعد عائلتك على بناء أسلوب حياة صحي يدوم.
             </p>
             <div className="pt-4">
-              <Link to="/signup" className="px-16 py-5 bg-orange text-white rounded-full font-black text-lg md:text-xl hover:bg-white hover:text-forest hover:scale-105 active:scale-95 transition-all duration-300 inline-block shadow-2xl shadow-orange/20">
-                اشترك الآن
-              </Link>
+              <a href="/#download" className="px-16 py-5 bg-orange text-white rounded-full font-black text-lg md:text-xl hover:bg-white hover:text-forest hover:scale-105 active:scale-95 transition-all duration-300 inline-block shadow-2xl shadow-orange/20">
+                تحميل التطبيق الآن
+              </a>
             </div>
           </div>
         </div>

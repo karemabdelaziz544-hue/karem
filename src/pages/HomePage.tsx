@@ -6,7 +6,7 @@ import {
   Shield, Check, X, ArrowLeft, Heart, Sparkles, Brain,
   Users, Activity, Lock, CheckCircle, Database, Calendar,
   MapPin, Clock, MessageSquare, ChevronRight, ChevronLeft,
-  Plus, Minus, HelpCircle, Award as Ribbon
+  Plus, Minus, HelpCircle, Award as Ribbon, Apple, Play
 } from 'lucide-react';
 import EventDetailsModal from '../components/EventDetailsModal';
 
@@ -177,7 +177,7 @@ const HomePage: React.FC = () => {
   ];
 
   const faqs = [
-    { q: "ما الذي يجعل هيليكس مختلفة عن تطبيقات حساب السعرات الأخرى؟", a: "تطبيقات السعرات العادية تعطيك أرقاماً جافة فقط. هيليكس تدمج تحاليلك الطبية المخبرية وتاريخك المرضي، ويقوم طبيب معالج حقيقي بمراجعتها وتعديل خطتك بشكل مباشر بالتعاون مع ذكاء اصطناعي فائق يتابع تفاصيل وجباتك وبدائلها على مدار الساعة." },
+    { q: "ما الذي يجعل هيليكس مختلفة عن تطبيقات حساب السعرات الأخرى？", a: "تطبيقات السعرات العادية تعطيك أرقاماً جافة فقط. هيليكس تدمج تحاليلك الطبية المخبرية وتاريخك المرضي، ويقوم طبيب معالج حقيقي بمراجعتها وتعديل خطتك بشكل مباشر بالتعاون مع ذكاء اصطناعي فائق يتابع تفاصيل وجباتك وبدائلها على مدار الساعة." },
     { q: "كيف يتم تصميم الخطة الغذائية والرياضية للمشترك؟", a: "بمجرد اشتراكك وإكمال ملفك الطبي، يُطلب منك إرفاق أي تحاليل طبية سابقة. يقوم محرك الذكاء الاصطناعي بقراءة المؤشرات الحيوية، ثم يتولى طبيبك المعالج تصفية وتدقيق الخطة لضمان مواءمتها وملاءمتها بنسبة 100٪ لأهدافك وسلامتك." },
     { q: "هل يمكنني إدارة صحة أطفالي وعائلتي من نفس الحساب؟", a: "نعم تماماً، تدعم هيليكس 'الحسابات العائلية'. كصاحب حساب رئيسي، يمكنك إضافة حسابات تابعة لزوجتك وأطفالك ومتابعة التزامهم اليومي، خطط تغذيتهم، وسجلاتهم الطبية بشكل منفصل ومحمي بالكامل." },
     { q: "هل أحتاج لعمل تحاليل طبية جديدة قبل الاشتراك؟", a: "ليس بالضرورة. يمكنك البدء برفع تحاليلك القديمة (التي لا تتجاوز 6 أشهر)، أو بدء تعبئة ملفك الطبي، وسيقوم طبيبك بتحديد ما إذا كنت تحتاج لعمل فحوصات إضافية محددة لبناء الخطة بدقة." },
@@ -235,9 +235,9 @@ const HomePage: React.FC = () => {
             </p>
 
             <div className="flex flex-wrap gap-4 pt-4">
-              <Link to="/signup" className="px-8 py-4 bg-forest text-white rounded-full font-black text-sm hover:bg-orange shadow-lg shadow-forest/15 hover:scale-105 active:scale-95 transition-all duration-300">
-                ابدأ رحلتك الآن
-              </Link>
+              <a href="#download" className="px-8 py-4 bg-forest text-white rounded-full font-black text-sm hover:bg-orange shadow-lg shadow-forest/15 hover:scale-105 active:scale-95 transition-all duration-300">
+                تحميل التطبيق الآن
+              </a>
               <a href="#journey" className="px-8 py-4 bg-forest/5 hover:bg-forest/10 border border-forest/10 rounded-full font-black text-sm hover:scale-105 active:scale-95 transition-all duration-300">
                 شاهد كيف نعمل
               </a>
@@ -339,12 +339,12 @@ const HomePage: React.FC = () => {
               viewport={{ once: true }}
               className="flex justify-center items-center gap-4 pt-2"
             >
-              <Link
-                to="/signup"
+              <a
+                href="#download"
                 className="px-8 py-3 bg-[#0e1f17] text-white rounded-full font-black text-xs hover:bg-orange transition-all duration-300 shadow-md shadow-[#0e1f17]/10"
               >
-                ابدأ رحلتك الآن
-              </Link>
+                تحميل التطبيق الآن
+              </a>
               <a
                 href="#journey"
                 className="px-8 py-3 bg-forest/5 hover:bg-forest/10 border border-forest/10 rounded-full font-black text-xs hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-1.5"
@@ -476,7 +476,7 @@ const HomePage: React.FC = () => {
                   <h3 className="text-sm font-black leading-snug">أنظمة غذائية مرنة ومصممة خصيصاً لكل أفراد عائلتك</h3>
                   <div className="pt-2 flex justify-between items-center border-t border-white/10">
                     <span className="text-[9px] font-black text-white/80">إدارة الحسابات</span>
-                    <div className="w-7 h-7 rounded-full bg-white text-orange flex items-center justify-center group-hover:bg-[#0c1f17] group-hover:text-white transition-colors animate-pulse-slow">
+                    <div className="w-7 h-7 rounded-full bg-white text-orange flex items-center justify-center group-hover:bg-[#0c1f17] group-hover:text-white transition-colors">
                       <ArrowLeft size={14} className="rotate-[135deg]" />
                     </div>
                   </div>
@@ -535,6 +535,7 @@ const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
+
       {/* 4. Healix Journey Section - Redesigned as dynamic accordion card layout */}
       <section id="journey" className="relative py-12 pb-16 px-6 md:px-12 bg-white overflow-hidden z-10">
 
@@ -909,6 +910,7 @@ const HomePage: React.FC = () => {
 
         </div>
       </section>
+
       {/* 5. AI Assistant Section */}
       <section className="py-24 px-6 md:px-12 bg-[#fbfdf7] relative overflow-hidden">
         <div className="max-w-7xl mx-auto grid md:grid-cols-12 gap-12 items-center">
@@ -1051,10 +1053,10 @@ const HomePage: React.FC = () => {
               وداعاً لأنظمة الحرمان والملل. مع هيليكس، يتم تصميم خطتك الغذائية بحيث تناسب الأطعمة التي تفضلها وعادات عائلتك اليومية، مع إمكانية تعديل وتبديل أي وجبة في ثوانٍ دون الإخلال بهدفك الصحي.
             </p>
             <div className="pt-2">
-              <Link to="/signup" className="inline-flex items-center gap-2 text-sm font-black text-orange hover:text-forest transition-colors">
-                اشترك الآن واحصل على خطتك الشخصية
+              <a href="#download" className="inline-flex items-center gap-2 text-sm font-black text-orange hover:text-forest transition-colors">
+                تحميل التطبيق الآن
                 <ArrowLeft size={16} />
-              </Link>
+              </a>
             </div>
           </div>
 
@@ -1160,7 +1162,7 @@ const HomePage: React.FC = () => {
       {/* 8. Doctor Follow-up Section */}
       <section className="py-24 px-6 md:px-12 bg-white">
         <div className="max-w-7xl mx-auto grid md:grid-cols-12 gap-12 items-center">
-          
+
           {/* Doctor Chat Mock */}
           <div className="md:col-span-6 bg-[#fbfdf7] rounded-[2.5rem] p-6 border border-gray-100 shadow-xl space-y-4">
             <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
@@ -1204,7 +1206,7 @@ const HomePage: React.FC = () => {
       {/* 9. Family Health Section */}
       <section className="py-24 px-6 md:px-12 bg-[#fbfdf7] relative overflow-hidden">
         <div className="max-w-7xl mx-auto grid md:grid-cols-12 gap-12 items-center">
-          
+
           {/* Text content */}
           <div className="md:col-span-6 space-y-6 text-right">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-forest/5 border border-forest/10 rounded-full text-xs font-black text-forest">
@@ -1216,10 +1218,10 @@ const HomePage: React.FC = () => {
               صحة عائلتك تبدأ من خطوة واحدة. تتيح لك هيليكس ربط حسابات زوجتك وأطفالك تحت حسابك الرئيسي لتوجيه وجباتهم الصحية، تتبع مؤشرات نمو الأطفال، وحفظ سجلاتهم الطبية في لوحة تحكم عائلية محمية وموحدة.
             </p>
             <div className="pt-2">
-              <Link to="/signup" className="inline-flex items-center gap-2 text-sm font-black text-orange hover:text-forest transition-colors">
-                تعرف على باقات الحساب العائلي
+              <a href="#download" className="inline-flex items-center gap-2 text-sm font-black text-orange hover:text-forest transition-colors">
+                تحميل التطبيق الآن
                 <ArrowLeft size={16} />
-              </Link>
+              </a>
             </div>
           </div>
 
@@ -1230,7 +1232,7 @@ const HomePage: React.FC = () => {
                 <span className="text-xs font-black">خالد (الأب)</span>
                 <span className="text-[9px] text-white/60">الحساب الرئيسي</span>
               </div>
-              
+
               <div className="absolute top-4 w-16 h-16 rounded-full bg-orange text-white flex flex-col items-center justify-center border-2 border-white shadow-lg hover:scale-105 transition-transform duration-300">
                 <span className="text-[10px] font-black">الأم</span>
                 <span className="text-[8px] text-white/70">سارة</span>
@@ -1250,6 +1252,8 @@ const HomePage: React.FC = () => {
 
         </div>
       </section>
+
+      {/* 10. Call to Action Banner Section */}
       <section className="py-24 px-6 md:px-12 bg-white">
         <div className="max-w-6xl mx-auto bg-gradient-to-r from-forest to-[#003828] text-white rounded-[3.5rem] p-8 md:p-16 text-center space-y-8 relative overflow-hidden shadow-2xl">
           <div className="absolute top-[-20%] left-[-10%] w-[30rem] h-[30rem] bg-emerald-700/30 rounded-full filter blur-3xl z-0" />
@@ -1262,9 +1266,9 @@ const HomePage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap justify-center gap-4 relative z-10 pt-4">
-            <Link to="/signup" className="px-8 py-4 bg-orange text-white rounded-full font-black text-sm hover:bg-white hover:text-forest hover:scale-105 active:scale-95 transition-all duration-300 shadow-lg shadow-orange/15">
-              إنشاء حساب
-            </Link>
+            <a href="#download" className="px-8 py-4 bg-orange text-white rounded-full font-black text-sm hover:bg-white hover:text-forest hover:scale-105 active:scale-95 transition-all duration-300 shadow-lg shadow-orange/15">
+              تحميل التطبيق الآن
+            </a>
             <button
               onClick={() => {
                 const chatFab = document.querySelector('button.group') as HTMLButtonElement;
@@ -1300,14 +1304,14 @@ const HomePage: React.FC = () => {
           ) : (
             <div className="grid md:grid-cols-3 gap-8">
               {articles.slice(0, 3).map((art) => (
-                <div 
+                <div
                   key={art.id}
                   className="bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between min-h-[440px] cursor-pointer group text-right"
                 >
                   <div className="h-48 overflow-hidden relative">
-                    <img 
-                      src={art.image_url || "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&q=80"} 
-                      alt={art.title} 
+                    <img
+                      src={art.image_url || "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&q=80"}
+                      alt={art.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                       loading="lazy"
                     />
@@ -1502,6 +1506,63 @@ const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* 15. Premium App Download Section */}
+      <section id="download" className="py-24 px-6 md:px-12 bg-gradient-to-b from-[#fbfdf7] to-[#f4f7f0] relative overflow-hidden">
+        <div className="max-w-5xl mx-auto bg-forest text-white rounded-[3.5rem] p-8 md:p-16 relative overflow-hidden shadow-2xl grid md:grid-cols-12 gap-8 items-center">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(230,95,43,0.15),transparent_60%)]" />
+
+          <div className="md:col-span-7 space-y-6 relative z-10 text-right">
+            <span className="text-orange font-bold text-xs uppercase tracking-wider block">تطبيق Healix للمحمول</span>
+            <h2 className="text-3xl md:text-5xl font-black leading-tight">صحتك وصحة عائلتك بالكامل في جيبك الآن</h2>
+            <p className="text-sm md:text-base text-white/80 font-medium leading-relaxed">
+              حمّل التطبيق الآن لتتمكن من إنشاء حسابك، متابعة خططك الغذائية والرياضية اليومية، وتتبع قراءات الـ InBody والتحاليل الطبية مع طبيبك المعالج مباشرة.
+            </p>
+            <div className="flex flex-wrap gap-4 pt-2">
+              <a
+                href="#download"
+                className="flex items-center gap-3 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl transition-all duration-300 group"
+              >
+                <Apple size={24} className="text-white group-hover:text-orange transition-colors" />
+                <div className="text-right">
+                  <span className="text-[10px] text-white/60 block leading-none">حمل من</span>
+                  <span className="text-sm font-bold text-white block mt-1">App Store</span>
+                </div>
+              </a>
+              <a
+                href="#download"
+                className="flex items-center gap-3 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl transition-all duration-300 group"
+              >
+                <Play size={24} className="text-white group-hover:text-orange transition-colors" />
+                <div className="text-right">
+                  <span className="text-[10px] text-white/60 block leading-none">حمل من</span>
+                  <span className="text-sm font-bold text-white block mt-1">Google Play</span>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div className="md:col-span-5 flex justify-center relative z-10">
+            {/* Visual Phone Mockup */}
+            <div className="w-[200px] h-[360px] bg-[#0c1f17] rounded-[2.5rem] p-2.5 shadow-2xl border-[4px] border-[#163023] relative overflow-hidden">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 h-4 w-24 bg-[#0c1f17] rounded-b-xl z-50 flex items-center justify-center">
+                <div className="w-10 h-0.5 bg-white/20 rounded-full" />
+              </div>
+              <div className="w-full h-full bg-[#f7faf4] rounded-[1.8rem] overflow-hidden p-4 pt-6 text-center flex flex-col justify-between">
+                <div className="space-y-1">
+                  <span className="text-orange text-xl">🥗</span>
+                  <h4 className="text-xs font-black text-forest">تطبيق Healix الصحّي</h4>
+                  <p className="text-[9px] text-gray-400">حياة صحية في كل بيت</p>
+                </div>
+                <div className="w-full bg-forest text-white py-2 rounded-xl text-[10px] font-black shadow-sm">
+                  مرحباً بك في مجتمعنا
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
   );
 };

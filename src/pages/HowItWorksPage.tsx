@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useSpring } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { 
+import {
   ArrowLeft, CheckCircle2, Apple, Play
 } from 'lucide-react';
 
@@ -29,12 +29,12 @@ const STEPS = [
         <line x1="130" y1="42" x2="170" y2="42" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
         <circle cx="150" cy="205" r="8" fill="none" stroke="currentColor" strokeWidth="3" />
         <rect x="102" y="55" width="96" height="135" rx="8" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
-        <motion.path 
-          d="M150 75 V140 M135 125 L150 140 L165 125" 
-          fill="none" 
-          stroke="#FF7A00" 
-          strokeWidth="5" 
-          strokeLinecap="round" 
+        <motion.path
+          d="M150 75 V140 M135 125 L150 140 L165 125"
+          fill="none"
+          stroke="#FF7A00"
+          strokeWidth="5"
+          strokeLinecap="round"
           strokeLinejoin="round"
           animate={{ y: [0, 8, 0] }}
           transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
@@ -58,7 +58,7 @@ const STEPS = [
         <circle cx="105" cy="100" r="20" fill="none" stroke="currentColor" strokeWidth="2" />
         <rect x="75" y="135" width="60" height="8" rx="4" fill="currentColor" opacity="0.2" />
         <rect x="70" y="155" width="70" height="12" rx="6" fill="#FF7A00" />
-        
+
         <motion.g
           animate={{ x: [0, 10, 0], y: [0, -5, 0] }}
           transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
@@ -114,7 +114,7 @@ const STEPS = [
     svg: (
       <svg viewBox="0 0 300 250" className="w-full h-full text-forest">
         <path d="M150 80 Q100 130 90 170 M150 80 Q200 130 210 170 M150 80 V170" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
-        
+
         <circle cx="150" cy="70" r="30" fill="white" stroke="#FF7A00" strokeWidth="3" />
         <path d="M138 82 Q150 72 162 82" fill="none" stroke="#FF7A00" strokeWidth="2.5" strokeLinecap="round" />
         <circle cx="150" cy="62" r="8" fill="#FF7A00" />
@@ -160,7 +160,7 @@ const STEPS = [
           <line x1="200" y1="0" x2="200" y2="250" />
           <line x1="240" y1="0" x2="240" y2="250" />
         </g>
-        
+
         <rect x="75" y="45" width="150" height="170" rx="16" fill="white" stroke="currentColor" strokeWidth="2" />
         <rect x="125" y="30" width="50" height="20" rx="6" fill="#f4f7f1" stroke="currentColor" strokeWidth="2" />
         <circle cx="150" cy="40" r="4" fill="currentColor" />
@@ -200,23 +200,23 @@ const STEPS = [
           <circle cx="150" cy="125" r="90" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="4 4" />
           <circle cx="150" cy="125" r="50" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="4 4" />
         </g>
-        
+
         <path d="M80 60 C80 150, 220 150, 220 60" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
         <path d="M150 127 V170" fill="none" stroke="currentColor" strokeWidth="4" />
         <circle cx="150" cy="180" r="14" fill="white" stroke="#FF7A00" strokeWidth="3" />
-        
+
         <motion.g
           animate={{ scale: [1, 1.05, 1] }}
           transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
         >
           <rect x="90" y="55" width="120" height="60" rx="16" fill="white" stroke="#FF7A00" strokeWidth="2.5" className="shadow-lg" />
-          <path 
-            d="M100 85 H120 L125 70 L132 100 L138 80 L142 90 L146 85 H200" 
-            fill="none" 
-            stroke="#004D3D" 
-            strokeWidth="3" 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
+          <path
+            d="M100 85 H120 L125 70 L132 100 L138 80 L142 90 L146 85 H200"
+            fill="none"
+            stroke="#004D3D"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
           <circle cx="120" cy="85" r="3" fill="#004D3D" />
           <circle cx="200" cy="85" r="3" fill="#004D3D" />
@@ -237,22 +237,22 @@ const STEPS = [
       <svg viewBox="0 0 300 250" className="w-full h-full text-forest">
         <rect x="60" y="40" width="180" height="170" rx="24" fill="white" stroke="currentColor" strokeWidth="2" />
         <rect x="80" y="60" width="140" height="12" rx="6" fill="currentColor" opacity="0.1" />
-        
+
         <path d="M110 115 C110 145, 190 145, 190 115 Z" fill="none" stroke="#FF7A00" strokeWidth="3" />
         <circle cx="150" cy="100" r="8" fill="#FF7A00" opacity="0.2" />
         <circle cx="135" cy="105" r="5" fill="currentColor" opacity="0.3" />
         <circle cx="165" cy="103" r="6" fill="currentColor" opacity="0.15" />
-        
+
         <g transform="translate(80, 160)">
           <text x="0" y="10" className="text-[10px] font-black fill-forest">السعرات المستهدفة</text>
           <text x="140" y="10" className="text-[10px] font-black fill-orange" textAnchor="end">١٨٠٠ سعرة</text>
           <rect x="0" y="18" width="140" height="8" rx="4" fill="currentColor" opacity="0.08" />
-          <motion.rect 
-            x="0" 
-            y="18" 
-            width="100" 
-            height="8" 
-            rx="4" 
+          <motion.rect
+            x="0"
+            y="18"
+            width="100"
+            height="8"
+            rx="4"
             fill="#FF7A00"
             initial={{ width: 0 }}
             whileInView={{ width: 105 }}
@@ -285,7 +285,7 @@ const STEPS = [
           <path d="M260 140 C260 120, 140 120, 140 140 C140 160, 160 160, 180 160 L200 180 L200 160 C240 160, 260 160, 260 140 Z" fill="white" stroke="#FF7A00" strokeWidth="2" />
           <line x1="160" y1="135" x2="230" y2="135" stroke="#FF7A00" strokeWidth="2.5" strokeLinecap="round" />
           <line x1="160" y1="148" x2="210" y2="148" stroke="#FF7A00" strokeWidth="2.5" strokeLinecap="round" />
-          
+
           <path d="M160 170 H220" stroke="currentColor" strokeWidth="1.5" strokeDasharray="2 2" />
           <circle cx="152" cy="170" r="4" fill="#FF7A00" />
         </motion.g>
@@ -307,14 +307,14 @@ const STEPS = [
         <rect x="70" y="60" width="60" height="8" rx="4" fill="currentColor" opacity="0.1" />
 
         <circle cx="105" cy="125" r="28" fill="none" stroke="currentColor" strokeWidth="2" strokeOpacity="0.1" />
-        <motion.circle 
-          cx="105" 
-          cy="125" 
-          r="28" 
-          fill="none" 
-          stroke="#FF7A00" 
-          strokeWidth="4" 
-          strokeDasharray="176" 
+        <motion.circle
+          cx="105"
+          cy="125"
+          r="28"
+          fill="none"
+          stroke="#FF7A00"
+          strokeWidth="4"
+          strokeDasharray="176"
           initial={{ strokeDashoffset: 176 }}
           whileInView={{ strokeDashoffset: 44 }}
           transition={{ duration: 1.5, ease: "easeOut" }}
@@ -326,12 +326,12 @@ const STEPS = [
         <g transform="translate(160, 85)">
           <line x1="0" y1="0" x2="0" y2="70" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           <line x1="0" y1="70" x2="75" y2="70" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          
-          <motion.path 
-            d="M 5 60 L 25 45 L 45 25 L 65 10" 
-            fill="none" 
-            stroke="#004D3D" 
-            strokeWidth="3.5" 
+
+          <motion.path
+            d="M 5 60 L 25 45 L 45 25 L 65 10"
+            fill="none"
+            stroke="#004D3D"
+            strokeWidth="3.5"
             strokeLinecap="round"
             initial={{ pathLength: 0 }}
             whileInView={{ pathLength: 1 }}
@@ -356,7 +356,7 @@ const STEPS = [
       <svg viewBox="0 0 300 250" className="w-full h-full text-forest">
         <rect x="110" y="30" width="80" height="150" rx="16" fill="white" stroke="currentColor" strokeWidth="3" />
         <circle cx="150" cy="160" r="6" fill="currentColor" opacity="0.3" />
-        
+
         <motion.g
           animate={{ x: [-5, 5, -5], y: [-5, 5, -5] }}
           transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
@@ -433,7 +433,7 @@ const HowItWorksPage: React.FC = () => {
 
   return (
     <div className="bg-[#fbfdf7] text-forest min-h-screen pt-20 overflow-x-hidden font-thmanyah selection:bg-forest selection:text-white" dir="rtl">
-      
+
       {/* Fixed Progress Indicator (Desktop only) */}
       <div className="hidden lg:flex fixed left-10 top-1/2 -translate-y-1/2 z-[100] flex-col items-center gap-3 bg-white/60 backdrop-blur-md px-3 py-6 rounded-full border border-gray-100 shadow-sm">
         {[...Array(10)].map((_, i) => {
@@ -459,7 +459,7 @@ const HowItWorksPage: React.FC = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-[#f5f8f2] via-[#fbfdf7] to-[#fbfdf7] pointer-events-none" />
 
         <div className="relative max-w-4xl mx-auto space-y-8 flex flex-col items-center">
-          
+
           {/* Rotating Headline Container */}
           <div className="h-20 md:h-28 flex items-center justify-center">
             <AnimatePresence mode="wait">
@@ -481,7 +481,7 @@ const HowItWorksPage: React.FC = () => {
           </p>
 
           <div className="pt-4">
-            <button 
+            <button
               onClick={scrollToDownload}
               className="px-10 py-4 bg-orange text-white rounded-full font-black text-sm hover:bg-forest transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-orange/15"
             >
@@ -506,7 +506,7 @@ const HowItWorksPage: React.FC = () => {
       {/* SECTION 4: The Story Journey Timeline */}
       <section className="relative py-12 px-6 md:px-12 bg-[#fbfdf7]">
         <div className="max-w-6xl mx-auto relative">
-          
+
           {/* Scroll-Animated Line */}
           <div className="absolute right-1/2 translate-x-1/2 top-10 bottom-10 w-[3px] bg-forest/5 hidden lg:block">
             <motion.div
@@ -520,7 +520,7 @@ const HowItWorksPage: React.FC = () => {
             {STEPS.map((step, idx) => {
               const isEven = idx % 2 === 0;
               return (
-                <div 
+                <div
                   key={step.num}
                   id={`step-${step.num}`}
                   className="relative grid lg:grid-cols-12 gap-12 items-center"
@@ -553,7 +553,7 @@ const HowItWorksPage: React.FC = () => {
 
                     {/* CTA Button */}
                     <div className="pt-4">
-                      <button 
+                      <button
                         onClick={scrollToDownload}
                         className="px-6 py-3 bg-forest text-white rounded-full font-black text-xs hover:bg-orange transition-all duration-300 hover:scale-105 active:scale-95 shadow-sm"
                       >
@@ -564,7 +564,7 @@ const HowItWorksPage: React.FC = () => {
 
                   {/* Right Column (Image/SVG block) */}
                   <div className={`lg:col-span-6 flex justify-center items-center ${isEven ? 'lg:order-2' : 'lg:order-1'}`}>
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       whileInView={{ opacity: 1, scale: 1 }}
                       viewport={{ once: true, margin: "-100px" }}
@@ -588,16 +588,16 @@ const HowItWorksPage: React.FC = () => {
       <section ref={downloadRef} id="download" className="py-24 px-6 md:px-12 bg-white">
         <div className="max-w-4xl mx-auto bg-gradient-to-r from-forest to-[#003828] text-white rounded-[3.5rem] p-8 md:p-16 text-center relative overflow-hidden shadow-2xl flex flex-col items-center justify-center space-y-6">
           <div className="absolute top-[-20%] left-[-10%] w-[30rem] h-[30rem] bg-emerald-700/30 rounded-full filter blur-3xl z-0" />
-          
+
           <div className="space-y-6 relative z-10 w-full flex flex-col items-center">
             <h2 className="text-4xl md:text-6xl font-black leading-tight text-white">ابدأ رحلتك الصحية اليوم</h2>
             <p className="text-sm md:text-base text-white/80 font-medium leading-relaxed max-w-2xl">
               كل ما تحتاجه لبناء حياة صحية لك ولعائلتك أصبح في تطبيق واحد. لا تتردد، غير نمط حياتك الآن بلمسة زر.
             </p>
-            
+
             {/* App Store / Google Play Buttons */}
             <div className="flex flex-wrap gap-4 pt-4 justify-center">
-              <a 
+              <a
                 href="#download-app-store"
                 className="flex items-center gap-3 px-6 py-3 bg-white text-forest hover:bg-orange hover:text-white rounded-2xl transition-all duration-300 font-black shadow-lg"
               >
@@ -608,7 +608,7 @@ const HowItWorksPage: React.FC = () => {
                 </div>
               </a>
 
-              <a 
+              <a
                 href="#download-google-play"
                 className="flex items-center gap-3 px-6 py-3 bg-white text-forest hover:bg-orange hover:text-white rounded-2xl transition-all duration-300 font-black shadow-lg"
               >

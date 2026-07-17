@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { 
-  Shield, Check, X, ArrowLeft, Heart, Sparkles, Brain, 
-  Users, Activity, Lock, CheckCircle, Database, 
+import {
+  Shield, Check, X, ArrowLeft, Heart, Sparkles, Brain,
+  Users, Activity, Lock, CheckCircle, Database,
   Award as Ribbon
 } from 'lucide-react';
 
@@ -27,7 +27,7 @@ const AboutPage: React.FC = () => {
 
   return (
     <div className="bg-[#fbfdf7] text-forest min-h-screen pt-24 overflow-x-hidden font-thmanyah selection:bg-forest selection:text-white" dir="rtl">
-      
+
       {/* 1. Hero Section */}
       <section className="relative py-24 md:py-32 px-6 md:px-12 overflow-hidden bg-gradient-to-b from-[#f5f8f2] to-[#fbfdf7]">
         <div className="absolute inset-0 z-0 opacity-40">
@@ -41,7 +41,7 @@ const AboutPage: React.FC = () => {
               <Sparkles size={12} className="text-orange" />
               <span>هيليكس للصحة الذكية</span>
             </div>
-            
+
             <h1 className="text-5xl md:text-7xl font-extrabold text-forest leading-[1.1] tracking-tight">
               من أجل حياة صحية...
               <br />
@@ -53,9 +53,9 @@ const AboutPage: React.FC = () => {
             </p>
 
             <div className="flex flex-wrap gap-4 pt-4">
-              <Link to="/signup" className="px-8 py-4 bg-forest text-white rounded-full font-black text-sm hover:bg-orange shadow-lg shadow-forest/15 hover:scale-105 active:scale-95 transition-all duration-300">
-                ابدأ رحلتك اليوم
-              </Link>
+              <a href="/#download" className="px-8 py-4 bg-forest text-white rounded-full font-black text-sm hover:bg-orange shadow-lg shadow-forest/15 hover:scale-105 active:scale-95 transition-all duration-300">
+                تحميل التطبيق الآن
+              </a>
               <a href="#how-it-works" className="px-8 py-4 bg-forest/5 hover:bg-forest/10 border border-forest/10 rounded-full font-black text-sm hover:scale-105 active:scale-95 transition-all duration-300">
                 شاهد كيف نعمل
               </a>
@@ -66,9 +66,9 @@ const AboutPage: React.FC = () => {
           <div className="md:col-span-5 relative flex justify-center items-center h-[400px]">
             {/* Background Glow */}
             <div className="absolute w-72 h-72 bg-emerald-100 rounded-full filter blur-2xl z-0" />
-            
+
             {/* UI Card 1: Family Dashboard */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 40, rotate: -2 }}
               animate={{ opacity: 1, y: 0, rotate: -2 }}
               transition={{ duration: 0.8, delay: 0.2 }}
@@ -103,7 +103,7 @@ const AboutPage: React.FC = () => {
             </motion.div>
 
             {/* UI Card 2: AI Health Agent */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -40, rotate: 3 }}
               animate={{ opacity: 1, y: 0, rotate: 3 }}
               transition={{ duration: 0.8, delay: 0.4 }}
@@ -136,7 +136,7 @@ const AboutPage: React.FC = () => {
 
           {/* Timeline Layout */}
           <div className="relative border-r border-gray-100 pr-8 mr-4 space-y-16">
-            
+
             {/* Timeline Item 1: Problem */}
             <motion.div {...fadeInUp} className="relative">
               <div className="absolute right-[-41px] top-1.5 w-6 h-6 rounded-full bg-red-100 border-4 border-white flex items-center justify-center">
@@ -173,12 +173,12 @@ const AboutPage: React.FC = () => {
       <section className="py-24 px-6 md:px-12 bg-forest text-white relative overflow-hidden">
         {/* Decorative Grid */}
         <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:24px_24px]" />
-        
+
         <div className="max-w-4xl mx-auto text-center space-y-8 relative z-10">
           <motion.div {...fadeInUp} className="inline-flex p-3 bg-white/10 rounded-2xl">
             <Heart size={32} className="text-orange" />
           </motion.div>
-          <motion.h2 
+          <motion.h2
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
@@ -195,7 +195,7 @@ const AboutPage: React.FC = () => {
       <section className="py-24 px-6 md:px-12 bg-[#fbfdf7]">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-12 gap-12 items-center">
-            
+
             <div className="md:col-span-5 space-y-6 text-right">
               <h2 className="text-3xl md:text-5xl font-black text-forest">رسالتنا وقيمنا التأسيسية</h2>
               <p className="text-base text-forest/70 font-medium leading-relaxed">
@@ -208,7 +208,7 @@ const AboutPage: React.FC = () => {
             </div>
 
             <div className="md:col-span-7 grid sm:grid-cols-2 gap-6">
-              
+
               {/* Mission Card 1 */}
               <motion.div {...fadeInUp} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
                 <CheckCircle className="text-forest mb-4" size={24} />
@@ -261,7 +261,7 @@ const AboutPage: React.FC = () => {
             </p>
           </div>
 
-          <motion.div 
+          <motion.div
             variants={staggerContainer}
             initial="initial"
             whileInView="whileInView"
@@ -280,7 +280,7 @@ const AboutPage: React.FC = () => {
             {/* Philosophy Card 2 */}
             <motion.div variants={fadeInUp} className="bg-[#fbfdf7] rounded-[2rem] p-8 border border-gray-100 hover:-translate-y-2 hover:shadow-xl transition-all duration-300">
               <span className="text-xs font-black text-orange mb-2 block">٠٢</span>
-              <h3 className="text-xl font-black mb-4">الالوقاية أفضل من العلاج</h3>
+              <h3 className="text-xl font-black mb-4">الوقاية أفضل من العلاج</h3>
               <p className="text-sm text-forest/70 font-medium leading-relaxed">
                 قراءة تحاليلك الطبية ومتابعة مؤشراتك الحيوية بشكل استباقي يمنحك القوة لتلافي المشاكل الصحية قبل حدوثها أو تفاقمها.
               </p>
@@ -316,10 +316,10 @@ const AboutPage: React.FC = () => {
             {/* Philosophy Card 6 */}
             <motion.div variants={fadeInUp} className="bg-forest text-white rounded-[2rem] p-8 flex flex-col justify-between hover:scale-[1.02] transition-transform duration-300">
               <h3 className="text-2xl font-black leading-tight">هيليكس.. شريكك الصحي الدائم.</h3>
-              <Link to="/signup" className="flex items-center gap-2 text-orange text-sm font-black hover:text-white transition-colors mt-8">
-                اشترك الآن وابدأ رحلتك
+              <a href="/#download" className="flex items-center gap-2 text-orange text-sm font-black hover:text-white transition-colors mt-8">
+                تحميل التطبيق الآن
                 <ArrowLeft size={16} />
-              </Link>
+              </a>
             </motion.div>
           </motion.div>
         </div>
@@ -336,7 +336,7 @@ const AboutPage: React.FC = () => {
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 items-stretch">
-            
+
             {/* Left: Traditional Apps */}
             <div className="bg-gray-100/50 rounded-3xl p-8 border border-gray-200/50 space-y-6">
               <div className="flex items-center gap-3">
@@ -381,7 +381,7 @@ const AboutPage: React.FC = () => {
             {/* Right: Healix */}
             <div className="bg-forest text-white rounded-3xl p-8 border border-forest/10 space-y-6 shadow-2xl relative overflow-hidden">
               <div className="absolute -top-10 -left-10 w-40 h-40 bg-emerald-500/10 rounded-full filter blur-xl" />
-              
+
               <div className="flex items-center gap-3 relative z-10">
                 <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-orange">
                   <Check size={20} />
@@ -437,7 +437,7 @@ const AboutPage: React.FC = () => {
 
           {/* Horizontal Journey Timeline */}
           <div className="grid grid-cols-1 md:grid-cols-9 gap-6 relative">
-            
+
             {/* Step 1 */}
             <div className="bg-[#fbfdf7] rounded-3xl p-6 border border-gray-100 flex flex-col justify-between min-h-[180px] hover:shadow-md transition-shadow relative">
               <span className="w-8 h-8 rounded-full bg-forest text-white flex items-center justify-center text-xs font-black">١</span>
@@ -526,7 +526,7 @@ const AboutPage: React.FC = () => {
       {/* 8. Numbers Section */}
       <section className="py-20 px-6 md:px-12 bg-gradient-to-r from-forest to-[#003828] text-white">
         <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
-          
+
           <div className="text-center space-y-2">
             <h3 className="text-5xl md:text-6xl font-black text-orange">١٠٠٪</h3>
             <p className="text-sm text-white/80 font-black">أنظمة وخطط مخصصة</p>
@@ -565,7 +565,7 @@ const AboutPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            
+
             {/* Value 1 */}
             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm text-right space-y-4">
               <div className="w-10 h-10 rounded-2xl bg-forest/5 flex items-center justify-center text-forest">
@@ -617,7 +617,7 @@ const AboutPage: React.FC = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
-            
+
             {/* Tech Card 1 */}
             <div className="bg-[#fbfdf7] rounded-3xl p-8 border border-gray-100 space-y-4">
               <div className="w-12 h-12 rounded-2xl bg-forest text-white flex items-center justify-center">
@@ -659,7 +659,7 @@ const AboutPage: React.FC = () => {
       <section className="py-24 px-6 md:px-12 bg-[#fbfdf7] relative">
         <div className="max-w-5xl mx-auto bg-forest text-white rounded-[3rem] p-8 md:p-16 shadow-2xl relative overflow-hidden flex flex-col md:flex-row gap-12 items-center">
           <div className="absolute top-[-20%] right-[-10%] w-[30rem] h-[30rem] bg-emerald-700/30 rounded-full filter blur-3xl z-0" />
-          
+
           <div className="md:w-7/12 space-y-6 relative z-10">
             <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-orange">
               <Lock size={24} />
@@ -716,7 +716,7 @@ const AboutPage: React.FC = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            
+
             {/* Panel 1: Dashboard */}
             <div className="bg-[#fbfdf7] rounded-[2.5rem] p-6 border border-gray-100 space-y-6 hover:shadow-xl transition-all duration-300">
               <span className="text-xs font-black text-orange">الواجهة الرئيسية</span>
@@ -724,10 +724,10 @@ const AboutPage: React.FC = () => {
               <p className="text-xs text-forest/70 font-bold leading-relaxed">
                 متابعة المهام، الالتزام، شرب الماء، الوجبات المقررة لليوم بشكل منظم وبسيط.
               </p>
-              
+
               <div className="bg-white p-4 rounded-2xl border border-gray-100 space-y-3">
                 <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                  <span className="text-[10px] font-black">الفطور المجدول</span>
+                  <span className="text-[10px] font-black">الفطور המجدول</span>
                   <span className="text-[9px] bg-emerald-50 text-forest px-2 py-0.5 rounded-full font-black">تم تناولها</span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -744,7 +744,7 @@ const AboutPage: React.FC = () => {
               <p className="text-xs text-forest/70 font-bold leading-relaxed">
                 تصفح ووصفات الوجبات المصممة لتدوم وتحقق أهدافك بناءً على فحص مؤشراتك.
               </p>
-              
+
               <div className="bg-white p-4 rounded-2xl border border-gray-100 space-y-3">
                 <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                   <div className="h-full w-2/3 bg-forest rounded-full" />
@@ -764,7 +764,7 @@ const AboutPage: React.FC = () => {
               <p className="text-xs text-forest/70 font-bold leading-relaxed">
                 عرض ومقارنة نتائج تحاليل الدم المعملية السابقة ومراقبة تحسن المؤشرات مع الوقت.
               </p>
-              
+
               <div className="bg-white p-4 rounded-2xl border border-gray-100 space-y-3">
                 <div className="flex justify-between items-center text-[10px] font-black">
                   <span>فيتامين د (Vitamin D)</span>
@@ -786,7 +786,7 @@ const AboutPage: React.FC = () => {
         <div className="absolute inset-0 opacity-30">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-100 rounded-full filter blur-3xl" />
         </div>
-        
+
         <div className="max-w-3xl mx-auto space-y-6 relative z-10">
           <Ribbon size={40} className="text-orange mx-auto" />
           <h2 className="text-4xl md:text-5xl font-black text-forest">نعدك أن تكون صحتك وصحة عائلتك أولوية دائماً</h2>
@@ -800,7 +800,7 @@ const AboutPage: React.FC = () => {
       <section className="py-24 px-6 md:px-12 bg-white">
         <div className="max-w-6xl mx-auto bg-gradient-to-r from-forest to-[#003828] text-white rounded-[3rem] p-8 md:p-16 text-center space-y-8 relative overflow-hidden shadow-2xl">
           <div className="absolute top-[-20%] left-[-10%] w-[30rem] h-[30rem] bg-emerald-700/30 rounded-full filter blur-3xl z-0" />
-          
+
           <div className="max-w-2xl mx-auto space-y-6 relative z-10">
             <h2 className="text-4xl md:text-6xl font-black leading-tight">ابدأ رحلتك الصحية مع عائلتك اليوم</h2>
             <p className="text-sm md:text-base text-white/80 font-medium leading-relaxed">
@@ -809,12 +809,12 @@ const AboutPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap justify-center gap-4 relative z-10 pt-4">
-            <Link to="/signup" className="px-8 py-4 bg-orange text-white rounded-full font-black text-sm hover:bg-white hover:text-forest hover:scale-105 active:scale-95 transition-all duration-300 shadow-lg shadow-orange/15">
-              ابدأ الآن مجاناً
-            </Link>
-            <a href="/#pricing" className="px-8 py-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full font-black text-sm hover:scale-105 active:scale-95 transition-all duration-300">
-              استكشف باقات الأسرة
+            <a href="/#download" className="px-8 py-4 bg-orange text-white rounded-full font-black text-sm hover:bg-white hover:text-forest hover:scale-105 active:scale-95 transition-all duration-300 shadow-lg shadow-orange/15">
+              تحميل التطبيق الآن
             </a>
+            <Link to="/pricing" className="px-8 py-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full font-black text-sm hover:scale-105 active:scale-95 transition-all duration-300">
+              استكشف باقات الأسرة
+            </Link>
           </div>
         </div>
       </section>

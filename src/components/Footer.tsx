@@ -15,7 +15,7 @@ const Footer: React.FC = () => {
               هيليكس
             </span>
           </div>
-          
+
           <p className="text-sage/60 text-sm leading-relaxed font-medium">
             هيليكس.. حياة صحية في كل بيت. أول منصة عربية متكاملة لتقديم حلول التغذية العلاجية والمتابعة الطبية الذكية لكل أفراد الأسرة تحت إشراف طبي متخصص ١٠٠٪.
           </p>
@@ -27,30 +27,29 @@ const Footer: React.FC = () => {
           <ul className="space-y-2 text-sage/60 text-sm font-medium">
             <li><Link to="/" className="hover:text-orange transition-colors">الرئيسية</Link></li>
             <li><Link to="/about" className="hover:text-orange transition-colors">عن هيليكس</Link></li>
-            <li><Link to="/pricing" className="hover:text-orange transition-colors">الأسعار والباقات</Link></li>
-            <li><Link to="/how-it-works" className="hover:text-orange transition-colors">كيف نعمل؟</Link></li>
-            <li><Link to="/events" className="hover:text-orange transition-colors">الفعاليات والورش</Link></li>
-            <li><Link to="/blog" className="hover:text-orange transition-colors">المدونة الطبية</Link></li>
+            <li><Link to="/how-it-works" className="hover:text-orange transition-colors">كيف تعمل هيليكس</Link></li>
+            <li><Link to="/pricing" className="hover:text-orange transition-colors">الأسعار</Link></li>
+            <li><Link to="/blog" className="hover:text-orange transition-colors">المقالات</Link></li>
+            <li><Link to="/events" className="hover:text-orange transition-colors">الفعاليات</Link></li>
           </ul>
         </div>
 
-        {/* Links: Company */}
+        {/* Links: Legal */}
         <div>
-          <h4 className="font-bold mb-4 text-white text-lg">الشركة</h4>
+          <h4 className="font-bold mb-4 text-white text-lg font-bold">قانوني</h4>
           <ul className="space-y-2 text-sage/60 text-sm font-medium">
-            <li><a href="#" className="hover:text-orange transition-colors">انضم للفريق الطبي</a></li>
-            <li><a href="#" className="hover:text-orange transition-colors">سياسة الخصوصية</a></li>
-            <li><a href="#" className="hover:text-orange transition-colors">الشروط والأحكام</a></li>
+            <li><Link to="#" className="hover:text-orange transition-colors">سياسة الخصوصية</Link></li>
+            <li><Link to="#" className="hover:text-orange transition-colors">الشروط والأحكام</Link></li>
           </ul>
         </div>
 
         {/* App Download Center */}
         <div>
-          <h4 className="font-bold mb-4 text-white text-lg">حمل التطبيق الآن</h4>
+          <h4 className="font-bold mb-4 text-white text-lg">تحميل التطبيق الآن</h4>
           <p className="text-sage/60 text-sm mb-4 font-medium">ابدأ رحلتك الصحية وتابع التزامك اليومي عبر تطبيق الهواتف الذكية.</p>
           <div className="flex flex-col gap-2.5">
             <a
-              href="#download"
+              href="/#download"
               className="flex items-center gap-3 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all duration-300 text-right group"
             >
               <div className="text-white group-hover:text-orange transition-colors">
@@ -62,7 +61,7 @@ const Footer: React.FC = () => {
               </div>
             </a>
             <a
-              href="#download"
+              href="/#download"
               className="flex items-center gap-3 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all duration-300 text-right group"
             >
               <div className="text-white group-hover:text-orange transition-colors">

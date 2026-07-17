@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { 
+import {
   Calendar, MapPin, Clock, Users, Search, Sparkles
 } from 'lucide-react';
 import EventDetailsModal from '../components/EventDetailsModal';
@@ -10,7 +10,7 @@ const EventsPage: React.FC = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
-  
+
   // Category filter state
   const [activeCategory, setActiveCategory] = useState<string>('الكل');
 
@@ -61,7 +61,7 @@ const EventsPage: React.FC = () => {
 
   return (
     <div className="bg-[#fbfdf7] text-forest min-h-screen pt-20 overflow-x-hidden font-thmanyah selection:bg-forest selection:text-white" dir="rtl">
-      
+
       {/* ── Hero Section ─────────────────────────────────── */}
       <section className="relative overflow-hidden pt-28 pb-12 px-5 md:px-16 text-center">
         {/* Soft gradient bg */}
@@ -109,11 +109,10 @@ const EventsPage: React.FC = () => {
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`whitespace-nowrap px-6 py-2 rounded-full text-xs font-black transition-all duration-300 active:scale-95 ${
-                activeCategory === cat
+              className={`whitespace-nowrap px-6 py-2 rounded-full text-xs font-black transition-all duration-300 active:scale-95 ${activeCategory === cat
                   ? 'bg-forest text-white shadow-md'
                   : 'bg-white text-forest border border-gray-100 hover:bg-forest/5'
-              }`}
+                }`}
             >
               {cat}
             </button>
@@ -138,15 +137,15 @@ const EventsPage: React.FC = () => {
         ) : (
           <div className="grid md:grid-cols-3 gap-8">
             {filteredEvents.map((event) => (
-              <div 
+              <div
                 key={event.id}
                 onClick={() => setSelectedEvent(event)}
                 className="bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between min-h-[440px] cursor-pointer group"
               >
                 <div className="h-48 overflow-hidden relative">
-                  <img 
-                    src={event.image_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&q=80"} 
-                    alt={event.title} 
+                  <img
+                    src={event.image_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&q=80"}
+                    alt={event.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                   />
                   <span className="absolute top-4 right-4 px-3 py-1 rounded-full bg-forest/90 backdrop-blur-sm text-white text-[9px] font-black shadow-md">
@@ -195,8 +194,8 @@ const EventsPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
             {whyAttend.map((item, idx) => (
-              <div 
-                key={idx} 
+              <div
+                key={idx}
                 className="bg-[#fbfdf7] rounded-3xl p-6 border border-gray-100 shadow-sm text-right space-y-3 hover:-translate-y-1 transition-transform duration-300"
               >
                 <h3 className="text-sm font-black text-forest">{item.title}</h3>
@@ -209,10 +208,10 @@ const EventsPage: React.FC = () => {
 
       {/* Booking Details Modal */}
       {selectedEvent && (
-        <EventDetailsModal 
-          event={selectedEvent} 
+        <EventDetailsModal
+          event={selectedEvent}
           isOpen={!!selectedEvent}
-          onClose={() => setSelectedEvent(null)} 
+          onClose={() => setSelectedEvent(null)}
         />
       )}
 
